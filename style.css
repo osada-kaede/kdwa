@@ -1,0 +1,267 @@
+:root {
+  --bg-ui: #18181b;
+  --panel-bg: #27272a;
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --border-color: #3f3f46;
+  --accent: #ec4899;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Noto Sans JP", sans-serif;
+  background-color: var(--bg-ui);
+  color: var(--text-main);
+  padding-bottom: 60px;
+}
+
+/* ヘッダー */
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: #09090b;
+  border-bottom: 2px solid var(--accent);
+  gap: 10px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #ff00ff);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ボタン共通 */
+.btn {
+  background: #3f3f46;
+  color: #fff;
+  border: 1px solid #52525b;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.btn:hover:not(:disabled) {
+  background: #52525b;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #2563eb;
+  border-color: #3b82f6;
+}
+
+.btn-rainbow {
+  background: linear-gradient(45deg, #ff0055, #ffcc00, #00cc66, #0099ff);
+  border: none;
+  text-shadow: 1px 1px 2px #000;
+}
+
+/* PC 2カラムレイアウト */
+.app-layout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 20px;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--panel-bg);
+  padding: 10px;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+/* プレビューキャンバス（市松模様） */
+.preview-stage {
+  min-height: 360px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+/* コントロールパネル */
+.controls-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.control-group {
+  background: var(--panel-bg);
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.control-group h2 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  color: #fde047;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 6px;
+}
+
+.control-group label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  gap: 4px;
+}
+
+.control-group label.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+input[type="range"], select, textarea {
+  width: 100%;
+  background: #18181b;
+  color: #fff;
+  border: 1px solid #52525b;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.char-counter, .notice-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.disabled-control {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* 出力エリア */
+.export-panel {
+  background: var(--panel-bg);
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* トースト通知 */
+.toast {
+  position: fixed;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #10b981;
+  color: #000;
+  font-weight: bold;
+  padding: 10px 20px;
+  border-radius: 999px;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.app-footer {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 20px;
+}
+
+.mobile-only { display: none; }
+
+/* スマホ対応（767px以下） */
+@media (max-width: 767px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+  .preview-section {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-ui);
+    padding: 8px;
+    border-bottom: 2px solid var(--border-color);
+  }
+  .preview-stage {
+    min-height: 35vh;
+    max-height: 40vh;
+  }
+  .controls-section {
+    max-height: none;
+    padding: 12px;
+  }
+  .desktop-only { display: none; }
+  .mobile-only { display: flex; }
+  .mobile-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #09090b;
+    padding: 10px;
+    gap: 10px;
+    justify-content: center;
+    border-top: 1px solid var(--border-color);
+    z-index: 200;
+  }
+  .mobile-action-bar .btn {
+    flex: 1;
+    padding: 10px;
+  }
+}

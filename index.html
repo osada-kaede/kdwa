@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>クソダサ・レインボーワードアートジェネレーター</title>
+  <!-- Webフォント (@fontsource) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-jp@5.0.1/index.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-jp@5.0.1/index.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/dela-gothic-one@5.0.1/index.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/reggae-one@5.0.1/index.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/rocknroll-one@5.0.1/index.min.css" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>🌈 クソダサ・レインボーワードアートジェネレーター</h1>
+    <div class="header-actions">
+      <button id="btn-random" class="btn btn-rainbow" title="全パラメーターをランダム生成">🎲 おまかせダサ生成</button>
+      <button id="btn-undo" class="btn" disabled>↩️ Undo (<span id="undo-count">0</span>)</button>
+      <button id="btn-reset" class="btn">🔄 リセット</button>
+      <button id="btn-share" class="btn">🔗 URL共有</button>
+    </div>
+  </header>
+
+  <main class="app-layout">
+    <!-- プレビューエリア -->
+    <section class="preview-section">
+      <div class="preview-toolbar">
+        <label>サイズ:
+          <select id="ctrl-canvas-size">
+            <option value="auto">文字に自動フィット</option>
+            <option value="800x800">SNSアイコン (1:1 / 800×800)</option>
+            <option value="1200x675">Xヘッダー (16:9 / 1200×675)</option>
+            <option value="468x60">平成フルバナー (468×60)</option>
+            <option value="88x31">平成ミニバナー (88×31)</option>
+          </select>
+        </label>
+        <button id="btn-autofit" class="btn btn-sm">🔍 枠に自動フィット</button>
+        <button id="btn-play-pause" class="btn btn-sm">⏸️ 一時停止</button>
+      </div>
+
+      <div class="preview-stage" id="preview-stage">
+        <!-- ここに描画エンジンがDOM/SVGを生成 -->
+        <div id="wordart-mount"></div>
+      </div>
+
+      <!-- PC用出力エリア -->
+      <div class="export-panel desktop-only">
+        <div class="export-buttons">
+          <button id="btn-export-png" class="btn btn-primary">🖼️ PNG保存</button>
+          <button id="btn-export-gif" class="btn btn-primary">🎞️ GIF保存</button>
+          <button id="btn-export-mp4" class="btn btn-primary">🎬 MP4保存</button>
+          <button id="btn-copy-code" class="btn">📋 HTML/CSSコピー</button>
+        </div>
+        <textarea id="code-output" readonly rows="5" placeholder="ここにコピペ用HTML/CSSコードが生成されます"></textarea>
+      </div>
+    </section>
+
+    <!-- コントロールパネル -->
+    <section class="controls-section">
+      <!-- テキスト & プリセット -->
+      <div class="control-group">
+        <h2>📝 テキスト＆ダサプリセット</h2>
+        <textarea id="ctrl-text" maxlength="100" rows="2" placeholder="最大100文字まで入力可能">祝！キリ番10000HIT達成！！</textarea>
+        <div class="char-counter"><span id="char-count">15</span> / 100文字</div>
+
+        <label>ワンクリック・トータルプリセット:
+          <select id="ctrl-preset">
+            <option value="excel97">1. 王道・Excel97虹色アーチ</option>
+            <option value="gaming">2. ゲーミング極彩色フラッシュ</option>
+            <option value="kiriban">3. 平成のキリ番報告バナー</option>
+            <option value="pachinko">4. 昭和のパチンコ屋風・金×虹立体</option>
+            <option value="void3d">5. 虚無の3D回転レインボー</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- 虹（レインボー）設定 -->
+      <div class="control-group">
+        <h2>🌈 虹（レインボー）徹底設定</h2>
+        <label>カラーモード:
+          <select id="ctrl-rainbow-mode">
+            <option value="vivid">極彩色レインボー（原色7色）</option>
+            <option value="pastel">パステル虹</option>
+            <option value="cyber">サイバーネオン虹</option>
+            <option value="metallic">メタリック虹（金・銀・虹）</option>
+            <option value="solid">単色（脱・虹モード）</option>
+          </select>
+        </label>
+        <label>虹の角度: <span id="val-angle">90</span>°
+          <input type="range" id="ctrl-angle" min="0" max="360" value="90" />
+        </label>
+        <label>縞々（繰り返し）密度: <span id="val-repeat">1</span>周
+          <input type="range" id="ctrl-repeat" min="1" max="10" value="1" />
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="ctrl-hard-stop" /> 境界をぼかさない（クッキリ縞模様）
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="ctrl-rainbow-stroke" /> 輪郭線も虹にする
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="ctrl-rainbow-extrude" /> 3D立体側面も虹にする
+        </label>
+      </div>
+
+      <!-- フォント・輪郭・立体感 -->
+      <div class="control-group">
+        <h2>🔤 フォント・輪郭・3D立体</h2>
+        <label>フォント:
+          <select id="ctrl-font">
+            <option value="Dela Gothic One">極太ゴシック (Dela Gothic One)</option>
+            <option value="Reggae One">トゲトゲポップ (Reggae One)</option>
+            <option value="RocknRoll One">ロックンロール (RocknRoll One)</option>
+            <option value="Noto Sans JP">標準ゴシック (Noto Sans JP)</option>
+            <option value="Noto Serif JP">重厚明朝 (Noto Serif JP)</option>
+          </select>
+        </label>
+        <label>文字サイズ: <span id="val-size">64</span>px
+          <input type="range" id="ctrl-size" min="20" max="160" value="64" />
+        </label>
+        <label>輪郭線の太さ: <span id="val-stroke">4</span>px
+          <input type="range" id="ctrl-stroke" min="0" max="20" value="4" />
+        </label>
+        <label>輪郭線の色:
+          <input type="color" id="ctrl-stroke-color" value="#000000" />
+        </label>
+        <label>3D押し出し層数（最大25層）: <span id="val-extrude">6</span>層
+          <input type="range" id="ctrl-extrude" min="0" max="25" value="6" />
+        </label>
+      </div>
+
+      <!-- 変形（アーチ・傾き） -->
+      <div class="control-group">
+        <h2>📐 変形（アーチ・台形）</h2>
+        <label>変形モード:
+          <select id="ctrl-warp-mode">
+            <option value="none">直線（HTML/CSSモード）</option>
+            <option value="arch">半円アーチ（SVGモード）</option>
+            <option value="wave">ウェーブ波型（SVGモード）</option>
+          </select>
+        </label>
+        <label>曲率 / 波の強さ: <span id="val-warp-amount">30</span>
+          <input type="range" id="ctrl-warp-amount" min="-100" max="100" value="30" />
+        </label>
+        <label id="wrap-perspective">遠近台形（直線モード専用）: <span id="val-perspective">0</span>
+          <input type="range" id="ctrl-perspective" min="-45" max="45" value="0" />
+        </label>
+      </div>
+
+      <!-- アニメーション -->
+      <div class="control-group">
+        <h2>⚡ 動くダサさ（アニメーション）</h2>
+        <label>虹アニメ:
+          <select id="ctrl-rainbow-anim">
+            <option value="none">なし</option>
+            <option value="hue">ゲーミング発光（色相回転）</option>
+            <option value="flow">流れるレインボー</option>
+          </select>
+        </label>
+        <label>モーション:
+          <select id="ctrl-motion-anim">
+            <option value="none">なし</option>
+            <option value="rotateY">虚無のY軸3D回転</option>
+            <option value="bounce">上下バウンド</option>
+            <option value="shake">ガタガタ震える</option>
+          </select>
+        </label>
+        <label>周期（最短0.3秒キャップ）: <span id="val-speed">2.0</span>秒
+          <input type="range" id="ctrl-speed" min="0.3" max="10.0" step="0.1" value="2.0" />
+        </label>
+        <p class="notice-text">⚠️ 光過敏性発作への配慮のため、点滅周期は最短0.3秒（約3.3Hz）に制限されています。</p>
+      </div>
+
+      <!-- 背景・枠線 -->
+      <div class="control-group">
+        <h2>🖼️ 背景＆平成フレーム</h2>
+        <label>背景モード:
+          <select id="ctrl-bg-mode">
+            <option value="transparent">透過（市松模様プレビュー）</option>
+            <option value="solid">単色</option>
+            <option value="sunburst">追い虹サンバースト（回転集中線）</option>
+            <option value="space">平成タイル：キラキラ宇宙</option>
+            <option value="image">画像アップロード（最大10MB）</option>
+          </select>
+        </label>
+        <input type="file" id="ctrl-bg-file" accept="image/png,image/jpeg,image/webp" hidden />
+        <label>平成ベベル枠線:
+          <select id="ctrl-border-style">
+            <option value="none">なし</option>
+            <option value="ridge">立体ベベル枠（ridge）</option>
+            <option value="rainbow">点滅レインボー枠</option>
+          </select>
+        </label>
+      </div>
+    </section>
+  </main>
+
+  <!-- スマホ用下部固定アクションバー -->
+  <footer class="mobile-action-bar mobile-only">
+    <button id="btn-mobile-save" class="btn btn-primary">💾 画像・GIF保存</button>
+    <button id="btn-mobile-code" class="btn">📋 コード出力</button>
+  </footer>
+
+  <footer class="app-footer">
+    <p>※入力テキストおよびアップロード画像はすべてブラウザ内のみで処理され、サーバーへ一切送信・保存されません。</p>
+    <p>※生成物の利用は自己責任とし、第三者の著作権・肖像権を侵害しない範囲でお楽しみください。</p>
+  </footer>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="./script.js"></script>
+</body>
+</html>
