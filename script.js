@@ -1,88 +1,105 @@
+import * as opentype from "https://esm.sh/opentype.js@1.3.4";
+import { domToCanvas } from "https://esm.sh/modern-screenshot@4.4.39";
+import { Muxer, ArrayBufferTarget } from "https://esm.sh/mp4-muxer@5.1.3";
+
 // ==========================================
 // 1. フォント定数レジストリ (FONT_REGISTRY)
 // ==========================================
 const FONT_REGISTRY = {
   "Dela Gothic One": {
-    label: "極太ゴシック",
     cssUrl: "https://cdn.jsdelivr.net/npm/@fontsource/dela-gothic-one@5.0.1/index.min.css",
     binaryUrl: "https://raw.githubusercontent.com/google/fonts/main/ofl/delagothicone/DelaGothicOne-Regular.ttf"
   },
   "Reggae One": {
-    label: "トゲトゲポップ",
     cssUrl: "https://cdn.jsdelivr.net/npm/@fontsource/reggae-one@5.0.1/index.min.css",
     binaryUrl: "https://raw.githubusercontent.com/google/fonts/main/ofl/reggaeone/ReggaeOne-Regular.ttf"
   },
   "RocknRoll One": {
-    label: "ロックンロール",
     cssUrl: "https://cdn.jsdelivr.net/npm/@fontsource/rocknroll-one@5.0.1/index.min.css",
     binaryUrl: "https://raw.githubusercontent.com/google/fonts/main/ofl/rocknrollone/RocknRollOne-Regular.ttf"
   },
   "Noto Sans JP": {
-    label: "標準ゴシック",
     cssUrl: "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-jp@5.0.1/index.min.css",
     binaryUrl: "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf"
   },
   "Noto Serif JP": {
-    label: "重厚明朝",
     cssUrl: "https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-jp@5.0.1/index.min.css",
     binaryUrl: "https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifjp/NotoSerifJP%5Bwght%5D.ttf"
   }
 };
 
+const fontBufferCache = new Map();
+
 // ==========================================
-// 2. プリセット定義（テキスト維持仕様）
+// 2. トータルプリセット定義（文字は維持仕様）
 // ==========================================
 const PRESETS = {
   excel97: {
-    rainbowMode: "vivid", angle: 90, repeat: 1, hardStop: false,
+    rainbowMode: "vivid", solidColor: "#ff0055", angle: 90, repeat: 1, hardStop: false,
     rainbowStroke: false, rainbowExtrude: false,
-    font: "Dela Gothic One", size: 64, stroke: 3, strokeColor: "#000080",
-    extrude: 6, warpMode: "arch", warpAmount: 35, perspective: 0,
-    rainbowAnim: "none", motionAnim: "none", speed: 2.0,
-    bgMode: "transparent", borderStyle: "none"
+    font: "Dela Gothic One", size: 64, lineHeight: 1.2, offsetX: 0, offsetY: 0,
+    stroke: 3, strokeColor: "#000080", tripleStroke: false,
+    extrude: 6, extrudeColor: "#1e1b4b", shadowDist: 6, shadowBlur: 4, shadowColor: "#000000",
+    warpMode: "arch", warpAmount: 35, skew: 0, scaleX: 1.0, perspective: 0,
+    rainbowAnim: "none", motionAnim: "none", subMotion: "none", speed: 2.0, easing: "linear",
+    bgMode: "transparent", bgColor1: "#000080", bgColor2: "#008080", borderStyle: "none"
   },
   gaming: {
-    rainbowMode: "cyber", angle: 45, repeat: 2, hardStop: false,
+    rainbowMode: "cyber", solidColor: "#ff0055", angle: 45, repeat: 2, hardStop: false,
     rainbowStroke: true, rainbowExtrude: true,
-    font: "RocknRoll One", size: 68, stroke: 4, strokeColor: "#ffffff",
-    extrude: 8, warpMode: "none", warpAmount: 0, perspective: 0,
-    rainbowAnim: "hue", motionAnim: "shake", speed: 0.4,
-    bgMode: "solid", bgColor: "#000000", borderStyle: "rainbow"
+    font: "RocknRoll One", size: 68, lineHeight: 1.2, offsetX: 0, offsetY: 0,
+    stroke: 4, strokeColor: "#ffffff", tripleStroke: true,
+    extrude: 10, extrudeColor: "#000000", shadowDist: 0, shadowBlur: 12, shadowColor: "#00ffcc",
+    warpMode: "none", warpAmount: 0, skew: -8, scaleX: 1.0, perspective: 0,
+    rainbowAnim: "hue", motionAnim: "pulse", subMotion: "shake", speed: 0.4, easing: "linear",
+    bgMode: "solid", bgColor1: "#000000", bgColor2: "#111111", borderStyle: "rainbow"
   },
   kiriban: {
-    rainbowMode: "vivid", angle: 0, repeat: 1, hardStop: true,
+    rainbowMode: "vivid", solidColor: "#ff0055", angle: 0, repeat: 1, hardStop: true,
     rainbowStroke: false, rainbowExtrude: false,
-    font: "Reggae One", size: 56, stroke: 6, strokeColor: "#ffffff",
-    extrude: 4, warpMode: "wave", warpAmount: 25, perspective: 0,
-    rainbowAnim: "flow", motionAnim: "bounce", speed: 1.5,
-    bgMode: "space", borderStyle: "ridge"
+    font: "Reggae One", size: 54, lineHeight: 1.2, offsetX: 0, offsetY: 0,
+    stroke: 6, strokeColor: "#ffffff", tripleStroke: true,
+    extrude: 5, extrudeColor: "#000080", shadowDist: 4, shadowBlur: 2, shadowColor: "#000000",
+    warpMode: "wave", warpAmount: 25, skew: 0, scaleX: 1.0, perspective: 0,
+    rainbowAnim: "charWave", motionAnim: "none", subMotion: "bounce", speed: 1.5, easing: "bounce",
+    bgMode: "space", bgColor1: "#000022", bgColor2: "#000044", borderStyle: "ridge"
   },
   pachinko: {
-    rainbowMode: "metallic", angle: 135, repeat: 3, hardStop: true,
+    rainbowMode: "metallic", solidColor: "#ffd700", angle: 135, repeat: 3, hardStop: true,
     rainbowStroke: true, rainbowExtrude: true,
-    font: "Dela Gothic One", size: 72, stroke: 6, strokeColor: "#ff0000",
-    extrude: 18, warpMode: "none", warpAmount: 0, perspective: -20,
-    rainbowAnim: "hue", motionAnim: "none", speed: 0.8,
-    bgMode: "sunburst", borderStyle: "rainbow"
+    font: "Dela Gothic One", size: 72, lineHeight: 1.1, offsetX: 0, offsetY: 0,
+    stroke: 6, strokeColor: "#ff0000", tripleStroke: true,
+    extrude: 20, extrudeColor: "#880000", shadowDist: 10, shadowBlur: 6, shadowColor: "#000000",
+    warpMode: "none", warpAmount: 0, skew: -10, scaleX: 1.1, perspective: -20,
+    rainbowAnim: "hue", motionAnim: "pulse", subMotion: "none", speed: 0.8, easing: "easeInOut",
+    bgMode: "sunburst", bgColor1: "#ff0000", bgColor2: "#ffff00", borderStyle: "rainbow"
   },
   void3d: {
-    rainbowMode: "pastel", angle: 90, repeat: 1, hardStop: false,
+    rainbowMode: "pastel", solidColor: "#a5f3fc", angle: 90, repeat: 1, hardStop: false,
     rainbowStroke: false, rainbowExtrude: true,
-    font: "Noto Serif JP", size: 60, stroke: 2, strokeColor: "#333333",
-    extrude: 12, warpMode: "none", warpAmount: 0, perspective: 0,
-    rainbowAnim: "none", motionAnim: "rotateY", speed: 3.0,
-    bgMode: "solid", bgColor: "#1e3a8a", borderStyle: "none"
+    font: "Noto Serif JP", size: 60, lineHeight: 1.3, offsetX: 0, offsetY: 0,
+    stroke: 2, strokeColor: "#1e3a8a", tripleStroke: false,
+    extrude: 14, extrudeColor: "#1e3a8a", shadowDist: 12, shadowBlur: 8, shadowColor: "#000000",
+    warpMode: "none", warpAmount: 0, skew: 0, scaleX: 1.0, perspective: 0,
+    rainbowAnim: "flow", motionAnim: "rotateY", subMotion: "none", speed: 3.0, easing: "linear",
+    bgMode: "grad2", bgColor1: "#1e3a8a", bgColor2: "#3b82f6", borderStyle: "groove"
   }
 };
 
 // ==========================================
-// 3. アプリ状態管理 & Undo履歴
+// 3. 状態管理 & Undo履歴
 // ==========================================
 let state = {
   text: "祝！キリ番10000HIT達成！！",
   canvasSize: "auto",
-  bgColor: "#ffffff",
-  bgImageDataUri: null, // URL共有除外対象
+  zoom: 1,
+  jpegQuality: 0.85,
+  gifDuration: "auto",
+  gifDither: true,
+  bgImageDataUri: null,
+  imgSaturate: true,
+  imgMosaic: false,
+  imgRainbow: false,
   ...PRESETS.excel97
 };
 
@@ -90,43 +107,53 @@ const undoStack = [];
 const MAX_UNDO = 10;
 let isPlaying = true;
 let startTime = performance.now();
+let isExportCancelled = false;
 
 function pushUndo() {
   undoStack.push(JSON.stringify(state));
   if (undoStack.length > MAX_UNDO) undoStack.shift();
-  updateUndoUI();
-}
-
-function updateUndoUI() {
   const btn = document.getElementById("btn-undo");
-  const count = document.getElementById("undo-count");
   btn.disabled = undoStack.length === 0;
-  count.textContent = undoStack.length;
+  document.getElementById("undo-count").textContent = undoStack.length;
 }
 
 // ==========================================
-// 4. グラデーション生成ロジック
+// 4. グラデーション & イージング計算
 // ==========================================
-function buildGradientCSS(s, offsetPercent = 0) {
+function applyEasing(t, type) {
+  if (type === "easeInOut") return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  if (type === "bounce") {
+    const n1 = 7.5625, d1 = 2.75;
+    if (t < 1 / d1) return n1 * t * t;
+    if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+    if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+    return n1 * (t -= 2.625 / d1) * t + 0.984375;
+  }
+  return t;
+}
+
+function getPalette(s) {
   const palettes = {
     vivid: ["#ff0000", "#ff8800", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#ff00ff"],
     pastel: ["#ff9aa2", "#ffb7b2", "#ffdac1", "#e2f0cb", "#b5ead7", "#c7ceea"],
     cyber: ["#ff0055", "#00ffcc", "#ffff00", "#9d00ff", "#00ccff"],
     metallic: ["#ffd700", "#ffffff", "#ff4500", "#00ffff", "#ffd700", "#c0c0c0"],
-    solid: ["#ff0055", "#ff0055"]
+    solid: [s.solidColor, s.solidColor]
   };
-  const colors = palettes[s.rainbowMode] || palettes.vivid;
+  return palettes[s.rainbowMode] || palettes.vivid;
+}
+
+function buildGradientCSS(s) {
+  const colors = getPalette(s);
   const stops = [];
   const totalSteps = colors.length * s.repeat;
-
   for (let i = 0; i <= totalSteps; i++) {
     const color = colors[i % colors.length];
-    const pct = ((i / totalSteps) * 100 + offsetPercent) % 100;
+    const pct = (i / totalSteps) * 100;
     if (s.hardStop && i > 0) {
-      const prevColor = colors[(i - 1) % colors.length];
-      stops.push(`${prevColor} ${(i / totalSteps) * 100}%`);
+      stops.push(`${colors[(i - 1) % colors.length]} ${pct}%`);
     }
-    stops.push(`${color} ${(i / totalSteps) * 100}%`);
+    stops.push(`${color} ${pct}%`);
   }
   return `linear-gradient(${s.angle}deg, ${stops.join(", ")})`;
 }
@@ -134,162 +161,248 @@ function buildGradientCSS(s, offsetPercent = 0) {
 // ==========================================
 // 5. 時刻 t 同期型の決定論的描画エンジン
 // ==========================================
-function renderAtTime(tMs) {
-  const mount = document.getElementById("wordart-mount");
-  const uid = "preview";
+function renderAtTime(tMs, options = {}) {
+  const mount = options.targetMount || document.getElementById("wordart-mount");
   const periodMs = Math.max(300, state.speed * 1000);
-  const progress = (tMs % periodMs) / periodMs; // 0.0 ~ 1.0
+  const rawProgress = (tMs % periodMs) / periodMs;
+  const p = applyEasing(rawProgress, state.easing);
 
-  // アニメーション計算（時刻 t に完全依存）
-  let hueDeg = 0;
-  if (state.rainbowAnim === "hue") {
-    hueDeg = Math.round(progress * 360);
-  }
+  // 色相回転（ゲーミング発光）
+  let hueDeg = state.rainbowAnim === "hue" ? Math.round(rawProgress * 360) : 0;
 
-  let transformStr = "";
+  // 変形・モーション合成
+  let transforms = [`translate(${state.offsetX}px, ${state.offsetY}px)`];
+  if (state.skew !== 0) transforms.push(`skewX(${state.skew}deg)`);
+  if (state.scaleX !== 1.0) transforms.push(`scaleX(${state.scaleX})`);
   if (state.warpMode === "none" && state.perspective !== 0) {
-    transformStr += `perspective(400px) rotateX(${state.perspective}deg) `;
-  }
-  if (state.motionAnim === "rotateY") {
-    transformStr += `rotateY(${progress * 360}deg) `;
-  } else if (state.motionAnim === "bounce") {
-    const y = Math.sin(progress * Math.PI * 2) * -15;
-    transformStr += `translateY(${y.toFixed(1)}px) `;
-  } else if (state.motionAnim === "shake") {
-    const x = Math.sin(progress * Math.PI * 8) * 5;
-    const r = Math.cos(progress * Math.PI * 6) * 3;
-    transformStr += `translateX(${x.toFixed(1)}px) rotate(${r.toFixed(1)}deg) `;
+    transforms.push(`perspective(400px) rotateX(${state.perspective}deg)`);
   }
 
-  // 背景スタイル構築
+  // メインモーション
+  if (state.motionAnim === "rotate2d") transforms.push(`rotate(${p * 360}deg)`);
+  else if (state.motionAnim === "rotateY") transforms.push(`perspective(600px) rotateY(${p * 360}deg)`);
+  else if (state.motionAnim === "rotateX") transforms.push(`perspective(600px) rotateX(${p * 360}deg)`);
+  else if (state.motionAnim === "drill") transforms.push(`perspective(600px) rotateY(${p * 720}deg) rotateZ(${p * 360}deg)`);
+  else if (state.motionAnim === "pulse") {
+    const sc = 1 + Math.sin(p * Math.PI * 2) * 0.2;
+    transforms.push(`scale(${sc.toFixed(3)})`);
+  }
+
+  // サブモーション（複合コンボ）
+  if (state.subMotion === "bounce") {
+    const y = -Math.abs(Math.sin(rawProgress * Math.PI * 2)) * 22;
+    transforms.push(`translateY(${y.toFixed(1)}px)`);
+  } else if (state.subMotion === "shake") {
+    const x = Math.sin(rawProgress * Math.PI * 10) * 6;
+    const r = Math.cos(rawProgress * Math.PI * 8) * 3;
+    transforms.push(`translateX(${x.toFixed(1)}px) rotate(${r.toFixed(1)}deg)`);
+  } else if (state.subMotion === "marquee") {
+    const mx = (0.5 - rawProgress) * 260;
+    transforms.push(`translateX(${mx.toFixed(1)}px)`);
+  }
+
+  const transformStr = transforms.join(" ");
+
+  // 背景スタイル
   let bgStyle = "background: transparent;";
+  let bgOverlayHtml = "";
   if (state.bgMode === "solid") {
-    bgStyle = `background: ${state.bgColor};`;
+    bgStyle = `background: ${state.bgColor1};`;
+  } else if (state.bgMode === "grad2") {
+    bgStyle = `background: linear-gradient(135deg, ${state.bgColor1}, ${state.bgColor2});`;
   } else if (state.bgMode === "sunburst") {
-    bgStyle = `background: repeating-conic-gradient(from ${progress * 360}deg, #ff0000 0deg 15deg, #ffff00 15deg 30deg, #00ff00 30deg 45deg, #00ffff 45deg 60deg, #ff00ff 60deg 75deg);`;
+    bgStyle = `background: repeating-conic-gradient(from ${rawProgress * 360}deg, #ff0000 0deg 15deg, #ffff00 15deg 30deg, #00ff00 30deg 45deg, #00ffff 45deg 60deg, #ff00ff 60deg 75deg);`;
+  } else if (state.bgMode === "rainbowStripe") {
+    const pos = Math.round(rawProgress * 200);
+    bgStyle = `background: repeating-linear-gradient(45deg, #ff0000 0 20px, #ffff00 20px 40px, #00ff00 40px 60px, #00ffff 60px 80px, #ff00ff 80px 100px); background-position: ${pos}px 0;`;
   } else if (state.bgMode === "space") {
-    bgStyle = `background: radial-gradient(#fff 1px, transparent 1px), radial-gradient(#ff0 1px, #000022 1px); background-size: 40px 40px; background-position: 0 0, 20px 20px;`;
+    bgStyle = `background-color: #000022; background-image: radial-gradient(#ffffff 1.5px, transparent 1.5px), radial-gradient(#ffff00 1px, transparent 1px); background-size: 40px 40px; background-position: 0 0, 20px 20px;`;
+  } else if (state.bgMode === "brick") {
+    bgStyle = `background-color: #991b1b; background-image: linear-gradient(335deg, #7f1d1d 23px, transparent 23px), linear-gradient(155deg, #7f1d1d 23px, transparent 23px); background-size: 58px 58px;`;
+  } else if (state.bgMode === "sky") {
+    bgStyle = `background: radial-gradient(circle at 30% 30%, #ffffff 18%, transparent 19%), radial-gradient(circle at 42% 33%, #ffffff 14%, transparent 15%), linear-gradient(180deg, #0284c7, #7dd3fc);`;
+  } else if (state.bgMode === "dots") {
+    bgStyle = `background-color: #fef08a; background-image: radial-gradient(#ef4444 20%, transparent 20%), radial-gradient(#3b82f6 20%, transparent 20%); background-size: 40px 40px; background-position: 0 0, 20px 20px;`;
   } else if (state.bgMode === "image" && state.bgImageDataUri) {
-    bgStyle = `background: url('${state.bgImageDataUri}') center/cover no-repeat; filter: saturate(200%);`;
+    const filters = [];
+    if (state.imgSaturate) filters.push("saturate(260%) contrast(120%)");
+    if (state.imgMosaic) filters.push("blur(2px)");
+    bgOverlayHtml += `<div style="position:absolute;inset:0;background:url('${state.bgImageDataUri}') center/cover no-repeat;filter:${filters.join(" ")};${state.imgMosaic ? "image-rendering:pixelated;transform:scale(1.02);" : ""}"></div>`;
+    if (state.imgRainbow) {
+      bgOverlayHtml += `<div style="position:absolute;inset:0;background:linear-gradient(45deg,rgba(255,0,0,0.45),rgba(255,255,0,0.45),rgba(0,255,0,0.45),rgba(0,255,255,0.45),rgba(255,0,255,0.45));mix-blend-mode:overlay;"></div>`;
+    }
   }
 
-  // 枠線スタイル
+  // 透過GIFモード時のドロップシャドウ無効化オプション
+  const disableDropShadow = options.noBlurShadow === true;
+
+  // 枠線
   let borderStyle = "";
-  if (state.borderStyle === "ridge") {
-    borderStyle = "border: 8px ridge #ffd700;";
-  } else if (state.borderStyle === "rainbow") {
-    borderStyle = `border: 8px solid hsl(${hueDeg}, 100%, 50%);`;
-  }
+  if (state.borderStyle === "ridge") borderStyle = "border: 10px ridge #ffd700;";
+  else if (state.borderStyle === "groove") borderStyle = "border: 10px groove #00ffff;";
+  else if (state.borderStyle === "rainbow") borderStyle = `border: 10px solid hsl(${(hueDeg + Math.round(rawProgress * 360)) % 360}, 100%, 50%);`;
 
   // キャンバスサイズ
-  let sizeStyle = "padding: 24px 36px; display: inline-flex; align-items: center; justify-content: center;";
+  let sizeStyle = "padding: 28px 40px; display: inline-flex; align-items: center; justify-content: center;";
   if (state.canvasSize !== "auto") {
     const [w, h] = state.canvasSize.split("x");
     sizeStyle = `width: ${w}px; height: ${h}px; display: flex; align-items: center; justify-content: center; overflow: hidden;`;
   }
 
   const grad = buildGradientCSS(state);
-  const bgPos = state.rainbowAnim === "flow" ? `${progress * 200}% 50%` : "50% 50%";
+  const bgPos = state.rainbowAnim === "flow" ? `${rawProgress * 200}% 50%` : "50% 50%";
 
-  // 描画モード分岐（直線HTML/CSS vs アーチSVG）
   let innerContent = "";
   if (state.warpMode === "none") {
-    // 3D押し出し影の生成（最大25層キャップ）
-    const layers = Math.min(25, state.extrude);
-    const shadows = [];
-    for (let i = 1; i <= layers; i++) {
-      const c = state.rainbowExtrude ? `hsl(${(i * 25 + hueDeg) % 360}, 100%, 45%)` : "#222222";
-      shadows.push(`${i}px ${i}px 0px ${c}`);
-    }
-    const textShadowCSS = shadows.length ? `text-shadow: ${shadows.join(", ")};` : "";
-
-    // DOMキャプチャバグ防止のため、影レイヤーと塗りレイヤーを分離
-    const lines = escapeHtml(state.text).replace(/\n/g, "<br>");
-    innerContent = `
-      <div style="position: relative; display: inline-block; transform: ${transformStr}; filter: hue-rotate(${hueDeg}deg);">
-        <!-- 背面：影＆輪郭レイヤー -->
-        <div aria-hidden="true" style="
-          font-family: '${state.font}', sans-serif;
-          font-size: ${state.size}px;
-          font-weight: 900;
-          line-height: 1.2;
-          text-align: center;
-          white-space: pre-wrap;
-          color: transparent;
-          -webkit-text-stroke: ${state.stroke * 2}px ${state.strokeColor};
-          paint-order: stroke fill;
-          ${textShadowCSS}
-        ">${lines}</div>
-        <!-- 前面：虹グラデーション塗りレイヤー -->
-        <div style="
-          position: absolute;
-          inset: 0;
-          font-family: '${state.font}', sans-serif;
-          font-size: ${state.size}px;
-          font-weight: 900;
-          line-height: 1.2;
-          text-align: center;
-          white-space: pre-wrap;
-          background-image: ${grad};
-          background-size: 200% 200%;
-          background-position: ${bgPos};
-          -webkit-background-clip: text;
-          background-clip: text;
-          color: transparent;
-        ">${lines}</div>
-      </div>
-    `;
+    innerContent = buildHtmlWordArt(state, transformStr, hueDeg, grad, bgPos, rawProgress, disableDropShadow);
   } else {
-    // SVGモード（複数行対応の <textPath> アーチ・ウェーブ）
-    innerContent = buildSvgMarkup(state, transformStr, hueDeg);
+    innerContent = buildSvgWordArt(state, transformStr, hueDeg, rawProgress, options.embeddedFontCss || "", disableDropShadow);
   }
 
   mount.innerHTML = `
-    <div id="wordart-canvas-box" style="${sizeStyle} ${bgStyle} ${borderStyle} box-sizing: border-box;">
-      ${innerContent}
+    <div id="wordart-canvas-box" style="position:relative; ${sizeStyle} ${bgStyle} ${borderStyle} box-sizing:border-box;">
+      ${bgOverlayHtml}
+      <div style="position:relative; z-index:2;">${innerContent}</div>
     </div>
   `;
 }
 
-function buildSvgMarkup(s, transformStr, hueDeg) {
+function buildHtmlWordArt(s, transformStr, hueDeg, grad, bgPos, rawProgress, disableDropShadow) {
+  // 3D押し出し影（最大25層）
+  const layers = Math.min(25, s.extrude);
+  const shadows = [];
+  for (let i = 1; i <= layers; i++) {
+    const c = s.rainbowExtrude ? `hsl(${(i * 24 + hueDeg) % 360}, 100%, 45%)` : s.extrudeColor;
+    shadows.push(`${i}px ${i}px 0px ${c}`);
+  }
+  if (!disableDropShadow && (s.shadowDist > 0 || s.shadowBlur > 0)) {
+    const baseOffset = layers + s.shadowDist;
+    shadows.push(`${baseOffset}px ${baseOffset}px ${s.shadowBlur}px ${s.shadowColor}`);
+  }
+  const textShadowCSS = shadows.length ? `text-shadow: ${shadows.join(", ")};` : "";
+
+  // 文字コンテンツ（1文字ずつ位相差ウェーブ虹対応）
+  const renderTextHtml = (isFront) => {
+    if (s.rainbowAnim !== "charWave" || !isFront) {
+      return escapeHtml(s.text).replace(/\n/g, "<br>");
+    }
+    let idx = 0;
+    return s.text.split("").map(ch => {
+      if (ch === "\n") return "<br>";
+      const charHue = Math.round(((idx * 35) + rawProgress * 360) % 360);
+      idx++;
+      return `<span style="color: hsl(${charHue}, 100%, 55%);">${escapeHtml(ch)}</span>`;
+    }).join("");
+  };
+
+  // 輪郭レイヤー（多重縁取り対応）
+  const strokeWidth = s.stroke * 2;
+  const outerTriple = s.tripleStroke && s.stroke > 0
+    ? `-webkit-text-stroke: ${strokeWidth + 8}px #ffffff; paint-order: stroke fill;`
+    : "";
+
+  const frontFillStyle = s.rainbowAnim === "charWave"
+    ? ""
+    : `background-image: ${grad}; background-size: 200% 200%; background-position: ${bgPos}; -webkit-background-clip: text; background-clip: text; color: transparent;`;
+
+  return `
+    <div style="position: relative; display: inline-block; transform: ${transformStr}; filter: hue-rotate(${hueDeg}deg);">
+      ${outerTriple ? `<div aria-hidden="true" style="position:absolute;inset:0;font-family:'${s.font}',sans-serif;font-size:${s.size}px;font-weight:900;line-height:${s.lineHeight};text-align:center;white-space:pre-wrap;color:transparent;${outerTriple}">${renderTextHtml(false)}</div>` : ""}
+      <div aria-hidden="true" style="
+        font-family: '${s.font}', sans-serif;
+        font-size: ${s.size}px;
+        font-weight: 900;
+        line-height: ${s.lineHeight};
+        text-align: center;
+        white-space: pre-wrap;
+        color: transparent;
+        -webkit-text-stroke: ${strokeWidth}px ${s.rainbowStroke ? "#ff00ff" : s.strokeColor};
+        paint-order: stroke fill;
+        ${textShadowCSS}
+      ">${renderTextHtml(false)}</div>
+      <div style="
+        position: absolute;
+        inset: 0;
+        font-family: '${s.font}', sans-serif;
+        font-size: ${s.size}px;
+        font-weight: 900;
+        line-height: ${s.lineHeight};
+        text-align: center;
+        white-space: pre-wrap;
+        ${frontFillStyle}
+      ">${renderTextHtml(true)}</div>
+    </div>
+  `;
+}
+
+function buildSvgWordArt(s, transformStr, hueDeg, rawProgress, embeddedFontCss, disableDropShadow) {
   const lines = s.text.split("\n");
-  const lineHeight = s.size * 1.3;
-  const width = Math.max(400, ...lines.map(l => l.length * s.size * 1.1));
-  const height = lines.length * lineHeight + Math.abs(s.warpAmount) * 2 + s.size;
+  const lineHeight = s.size * s.lineHeight;
+  const maxChars = Math.max(1, ...lines.map(l => l.length));
+  const width = Math.max(360, maxChars * s.size * 1.15 + 80);
+  const height = lines.length * lineHeight + Math.abs(s.warpAmount) * 2.2 + s.size + 40;
   const curve = s.warpAmount * 1.8;
 
-  let pathsAndTexts = "";
-  lines.forEach((line, idx) => {
-    const yBase = s.size + Math.abs(curve) * 0.6 + idx * lineHeight;
-    const pathId = `kuso-path-${idx}`;
-    const d = s.warpMode === "arch"
-      ? `M 20,${yBase} Q ${width / 2},${yBase - curve * 2} ${width - 20},${yBase}`
-      : `M 20,${yBase} Q ${width * 0.25},${yBase - curve} ${width * 0.5},${yBase} T ${width - 20},${yBase}`;
+  const palette = getPalette(s);
+  const stopsHtml = palette.map((c, i) => {
+    const offset = ((i / (palette.length - 1)) * 100).toFixed(1);
+    return `<stop offset="${offset}%" stop-color="${c}" />`;
+  }).join("");
 
-    pathsAndTexts += `
-      <path id="${pathId}" d="${d}" fill="none" />
-      <text font-family="'${s.font}', sans-serif" font-size="${s.size}" font-weight="900"
-            fill="url(#kuso-rainbow-grad)" stroke="${s.strokeColor}" stroke-width="${s.stroke}"
-            paint-order="stroke fill" text-anchor="middle">
-        <textPath href="#${pathId}" startOffset="50%">${escapeHtml(line)}</textPath>
-      </text>
+  const layers = Math.min(25, s.extrude);
+  let pathsHtml = "";
+  let extrudeUsesHtml = "";
+  let mainTextsHtml = "";
+
+  lines.forEach((line, idx) => {
+    const yBase = s.size + Math.abs(curve) * 0.65 + idx * lineHeight;
+    const pathId = `kuso-path-${idx}`;
+    const textGroupId = `kuso-text-${idx}`;
+    const d = s.warpMode === "arch"
+      ? `M 30,${yBase} Q ${width / 2},${yBase - curve * 2} ${width - 30},${yBase}`
+      : `M 30,${yBase} Q ${width * 0.25},${yBase - curve} ${width * 0.5},${yBase} T ${width - 30},${yBase}`;
+
+    pathsHtml += `<path id="${pathId}" d="${d}" fill="none" />`;
+
+    // SVG用 3D押し出し多重 <use> レイヤー
+    for (let l = layers; l >= 1; l--) {
+      const c = s.rainbowExtrude ? `hsl(${(l * 24 + hueDeg) % 360}, 100%, 45%)` : s.extrudeColor;
+      extrudeUsesHtml += `<use href="#${textGroupId}" x="${l}" y="${l}" fill="${c}" stroke="${c}" stroke-width="${s.stroke}" />`;
+    }
+
+    const strokeAttr = s.rainbowStroke ? "url(#kuso-stroke-grad)" : s.strokeColor;
+    mainTextsHtml += `
+      <g id="${textGroupId}">
+        <text font-family="'${s.font}', sans-serif" font-size="${s.size}" font-weight="900"
+              fill="url(#kuso-rainbow-grad)" stroke="${strokeAttr}" stroke-width="${s.stroke}"
+              paint-order="stroke fill" text-anchor="middle">
+          <textPath href="#${pathId}" startOffset="50%">${escapeHtml(line)}</textPath>
+        </text>
+      </g>
     `;
   });
 
+  const dropShadowFilter = (!disableDropShadow && (s.shadowDist > 0 || s.shadowBlur > 0))
+    ? `drop-shadow(${s.shadowDist}px ${s.shadowDist}px ${s.shadowBlur}px ${s.shadowColor})`
+    : "";
+
+  const shiftX = s.rainbowAnim === "flow" ? `${rawProgress * 100}%` : "0%";
+
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"
-         style="overflow: visible; transform: ${transformStr}; filter: hue-rotate(${hueDeg}deg);">
+         style="overflow: visible; transform: ${transformStr}; filter: hue-rotate(${hueDeg}deg) ${dropShadowFilter};">
       <defs>
-        <linearGradient id="kuso-rainbow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#ff0000" />
-          <stop offset="20%" stop-color="#ffff00" />
-          <stop offset="40%" stop-color="#00ff00" />
-          <stop offset="60%" stop-color="#00ffff" />
-          <stop offset="80%" stop-color="#0000ff" />
-          <stop offset="100%" stop-color="#ff00ff" />
+        ${embeddedFontCss ? `<style>${embeddedFontCss}</style>` : ""}
+        <linearGradient id="kuso-rainbow-grad" x1="${shiftX}" y1="0%" x2="100%" y2="0%" spreadMethod="repeat">
+          ${stopsHtml}
         </linearGradient>
+        <linearGradient id="kuso-stroke-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          ${stopsHtml}
+        </linearGradient>
+        ${pathsHtml}
       </defs>
-      ${pathsAndTexts}
+      ${extrudeUsesHtml}
+      ${mainTextsHtml}
     </svg>
   `;
 }
@@ -301,277 +414,710 @@ function escapeHtml(str) {
 }
 
 // ==========================================
-// 6. コピペ用 HTML/CSS コード生成（all: initial 対策済み）
+// 6. コピペ用 HTML/CSS/JS コード生成
 // ==========================================
 function generateExportCode() {
   const suffix = Math.random().toString(36).substring(2, 6);
-  const className = `kuso-wordart-${suffix}`;
+  const cls = `kuso-wordart-${suffix}`;
   const fontInfo = FONT_REGISTRY[state.font];
   const grad = buildGradientCSS(state);
   const lines = escapeHtml(state.text).replace(/\n/g, "<br>");
 
+  const needJs = state.rainbowAnim === "charWave";
+  const jsSnippet = needJs ? `\n<script>
+  document.querySelectorAll('.${cls}-char').forEach((el, i) => {
+    el.style.animation = 'kuso-hue-${suffix} ${state.speed}s linear infinite';
+    el.style.animationDelay = (-i * 0.1) + 's';
+  });
+<\/script>` : "";
+
+  const textBody = needJs
+    ? state.text.split("").map(c => c === "\n" ? "<br>" : `<span class="${cls}-char">${escapeHtml(c)}</span>`).join("")
+    : lines;
+
   const code = `<!-- クソダサ・レインボーワードアート -->
 <link rel="stylesheet" href="${fontInfo.cssUrl}">
 <style>
-  .${className}-wrap {
+  @keyframes kuso-hue-${suffix} { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+  .${cls}-wrap {
     all: initial;
     display: inline-block;
     box-sizing: border-box;
     font-family: '${state.font}', sans-serif;
-    padding: 20px;
+    padding: 24px;
+    ${state.bgMode === "solid" ? `background: ${state.bgColor1};` : ""}
     ${state.bgMode === "image" ? "background-image: url('/* ここに画像のURLを指定してください */');" : ""}
   }
-  .${className}-text {
+  .${cls}-text {
     font-family: '${state.font}', sans-serif;
     font-size: ${state.size}px;
     font-weight: 900;
-    background-image: ${grad};
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    line-height: ${state.lineHeight};
+    ${needJs ? "color: #ff0055;" : `background-image: ${grad}; -webkit-background-clip: text; background-clip: text; color: transparent;`}
     -webkit-text-stroke: ${state.stroke}px ${state.strokeColor};
     paint-order: stroke fill;
+    ${state.rainbowAnim === "hue" ? `animation: kuso-hue-${suffix} ${state.speed}s linear infinite;` : ""}
   }
 </style>
-<div class="${className}-wrap">
-  <div class="${className}-text">${lines}</div>
-</div>`;
+<div class="${cls}-wrap">
+  <div class="${cls}-text">${textBody}</div>
+</div>${jsSnippet}`;
 
   const out = document.getElementById("code-output");
   if (out) out.value = code;
+  document.getElementById("code-image-notice").hidden = state.bgMode !== "image";
   return code;
 }
 
 // ==========================================
-// 7. UIバインディング & 排他制御・URL共有
+// 7. opentype.js サブセットフォント埋め込み生成
 // ==========================================
-function syncUIFromState() {
-  document.getElementById("ctrl-text").value = state.text;
-  document.getElementById("char-count").textContent = state.text.length;
-  document.getElementById("ctrl-canvas-size").value = state.canvasSize;
-  document.getElementById("ctrl-rainbow-mode").value = state.rainbowMode;
-  document.getElementById("ctrl-angle").value = state.angle;
-  document.getElementById("val-angle").textContent = state.angle;
-  document.getElementById("ctrl-repeat").value = state.repeat;
-  document.getElementById("val-repeat").textContent = state.repeat;
-  document.getElementById("ctrl-hard-stop").checked = state.hardStop;
-  document.getElementById("ctrl-rainbow-stroke").checked = state.rainbowStroke;
-  document.getElementById("ctrl-rainbow-extrude").checked = state.rainbowExtrude;
-  document.getElementById("ctrl-font").value = state.font;
-  document.getElementById("ctrl-size").value = state.size;
-  document.getElementById("val-size").textContent = state.size;
-  document.getElementById("ctrl-stroke").value = state.stroke;
-  document.getElementById("val-stroke").textContent = state.stroke;
-  document.getElementById("ctrl-stroke-color").value = state.strokeColor;
-  document.getElementById("ctrl-extrude").value = state.extrude;
-  document.getElementById("val-extrude").textContent = state.extrude;
-  document.getElementById("ctrl-warp-mode").value = state.warpMode;
-  document.getElementById("ctrl-warp-amount").value = state.warpAmount;
-  document.getElementById("val-warp-amount").textContent = state.warpAmount;
-  document.getElementById("ctrl-perspective").value = state.perspective;
-  document.getElementById("val-perspective").textContent = state.perspective;
-  document.getElementById("ctrl-rainbow-anim").value = state.rainbowAnim;
-  document.getElementById("ctrl-motion-anim").value = state.motionAnim;
-  document.getElementById("ctrl-speed").value = state.speed;
-  document.getElementById("val-speed").textContent = state.speed.toFixed(1);
-  document.getElementById("ctrl-bg-mode").value = state.bgMode;
-  document.getElementById("ctrl-border-style").value = state.borderStyle;
+async function getEmbeddedFontCss(fontName, text) {
+  const reg = FONT_REGISTRY[fontName];
+  if (!reg) return "";
+  try {
+    let buffer = fontBufferCache.get(fontName);
+    if (!buffer) {
+      const res = await fetch(reg.binaryUrl);
+      buffer = await res.arrayBuffer();
+      fontBufferCache.set(fontName, buffer);
+    }
+    const font = opentype.parse(buffer);
+    const uniqueChars = Array.from(new Set(text.replace(/\s/g, "")));
+    const glyphs = [font.glyphs.get(0)]; // .notdef
+    uniqueChars.forEach(ch => {
+      const g = font.charToGlyph(ch);
+      if (g && g.index !== 0) glyphs.push(g);
+    });
+    const subsetFont = new opentype.Font({
+      familyName: fontName,
+      styleName: "Regular",
+      unitsPerEm: font.unitsPerEm,
+      ascender: font.ascender,
+      descender: font.descender,
+      glyphs
+    });
+    const arrayBuf = subsetFont.toArrayBuffer();
+    const bytes = new Uint8Array(arrayBuf);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary);
+    return `@font-face { font-family: '${fontName}'; src: url('data:font/opentype;base64,${base64}') format('opentype'); font-weight: 900; }`;
+  } catch (e) {
+    console.warn("サブセットフォント生成をスキップしました:", e);
+    return "";
+  }
+}
 
-  // 排他仕様：SVGモード時は遠近台形スライダーを無効化
-  const wrapPersp = document.getElementById("wrap-perspective");
-  const ctrlPersp = document.getElementById("ctrl-perspective");
-  if (state.warpMode !== "none") {
-    wrapPersp.classList.add("disabled-control");
-    ctrlPersp.disabled = true;
-  } else {
-    wrapPersp.classList.remove("disabled-control");
-    ctrlPersp.disabled = false;
+// ==========================================
+// 8. 静止画（PNG/JPEG）・GIF・MP4書き出しエンジン
+// ==========================================
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+function lcm(a, b) { return (a * b) / gcd(a, b); }
+
+function getLoopDurationMs() {
+  if (state.gifDuration !== "auto") return Number(state.gifDuration) * 1000;
+  const hasAnim = state.rainbowAnim !== "none" || state.motionAnim !== "none" || state.subMotion !== "none" || state.bgMode === "sunburst" || state.bgMode === "rainbowStripe" || state.borderStyle === "rainbow";
+  if (!hasAnim) return 1000;
+  const p1 = Math.round(Math.max(300, state.speed * 1000));
+  return Math.min(5000, p1);
+}
+
+async function captureFrameCanvas(tMs, embeddedFontCss, noBlurShadow = false, maxDim = 1280) {
+  const staging = document.createElement("div");
+  staging.style.cssText = "position:fixed; left:-9999px; top:0; pointer-events:none;";
+  document.body.appendChild(staging);
+  renderAtTime(tMs, { targetMount: staging, embeddedFontCss, noBlurShadow });
+
+  const targetEl = staging.querySelector("#wordart-canvas-box");
+  const rect = targetEl.getBoundingClientRect();
+  const scale = Math.min(1, maxDim / Math.max(rect.width || 1, rect.height || 1));
+
+  const canvas = await domToCanvas(targetEl, {
+    scale,
+    backgroundColor: null
+  });
+  staging.remove();
+  return canvas;
+}
+
+function showProgress(title) {
+  isExportCancelled = false;
+  document.getElementById("progress-title").textContent = title;
+  document.getElementById("rainbow-progress-bar").style.width = "0%";
+  document.getElementById("progress-percent").textContent = "0%";
+  document.getElementById("progress-overlay").hidden = false;
+}
+
+function updateProgress(pct) {
+  const clamped = Math.min(100, Math.round(pct));
+  document.getElementById("rainbow-progress-bar").style.width = `${clamped}%`;
+  document.getElementById("progress-percent").textContent = `${clamped}%`;
+}
+
+function hideProgress() {
+  document.getElementById("progress-overlay").hidden = true;
+}
+
+function triggerDownloadOrModal(blobUrl, filename, label) {
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  // インアプリブラウザ（X/LINE等）対策：長押し保存用モーダルも表示
+  openModal(label, `
+    <p style="font-size:0.85rem; margin-top:0;">自動ダウンロードが始まらない場合や、SNSアプリ内ブラウザの場合は下の画像を<strong>長押しして保存</strong>してください。</p>
+    <div style="text-align:center; background:#111; padding:10px; border-radius:8px;">
+      <img src="${blobUrl}" style="max-width:100%; max-height:50vh; border:1px solid #444;" />
+    </div>
+  `);
+}
+
+async function exportStaticImage(format) {
+  showProgress(`🖼️ ${format.toUpperCase()}画像を生成中...`);
+  try {
+    updateProgress(25);
+    const fontCss = state.warpMode !== "none" ? await getEmbeddedFontCss(state.font, state.text) : "";
+    updateProgress(55);
+    const canvas = await captureFrameCanvas(performance.now() - startTime, fontCss, false, 1600);
+    updateProgress(85);
+
+    if (format === "jpeg") {
+      const out = document.createElement("canvas");
+      out.width = canvas.width;
+      out.height = canvas.height;
+      const ctx = out.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, out.width, out.height);
+      ctx.drawImage(canvas, 0, 0);
+      out.toBlob(blob => {
+        hideProgress();
+        triggerDownloadOrModal(URL.createObjectURL(blob), `kusodasa-${Date.now()}.jpg`, "JPEG画像の保存");
+      }, "image/jpeg", state.jpegQuality);
+    } else {
+      canvas.toBlob(blob => {
+        hideProgress();
+        triggerDownloadOrModal(URL.createObjectURL(blob), `kusodasa-${Date.now()}.png`, "PNG画像の保存");
+      }, "image/png");
+    }
+  } catch (e) {
+    hideProgress();
+    showToast("❌ 画像の生成に失敗しました");
+    console.error(e);
+  }
+}
+
+// インラインBlob Web Worker による GIF エンコード
+function createGifWorker() {
+  const workerCode = `
+    import { GIFEncoder, quantize, applyPalette } from "https://esm.sh/gifenc@1.0.3";
+    self.onmessage = (e) => {
+      const { frames, width, height, delay, dither, transparent } = e.data;
+      const gif = GIFEncoder();
+      frames.forEach((rgba, idx) => {
+        const data = new Uint8ClampedArray(rgba);
+        const palette = quantize(data, 256, { format: transparent ? "rgba4444" : "rgb565" });
+        const index = applyPalette(data, palette, { format: transparent ? "rgba4444" : "rgb565" });
+        let transparentIndex = -1;
+        if (transparent) {
+          transparentIndex = palette.findIndex(p => p[3] < 128);
+        }
+        gif.writeFrame(index, width, height, {
+          palette,
+          delay,
+          transparent: transparent && transparentIndex !== -1,
+          transparentIndex: transparentIndex !== -1 ? transparentIndex : 0
+        });
+        self.postMessage({ type: "progress", pct: ((idx + 1) / frames.length) * 100 });
+      });
+      gif.finish();
+      const bytes = gif.bytes();
+      self.postMessage({ type: "done", buffer: bytes.buffer }, [bytes.buffer]);
+    };
+  `;
+  const blob = new Blob([workerCode], { type: "application/javascript" });
+  return new Worker(URL.createObjectURL(blob), { type: "module" });
+}
+
+async function exportGifAnimation() {
+  let transparentMode = false;
+  let fallbackBgColor = null;
+
+  if (state.bgMode === "transparent") {
+    const choice = confirm(
+      "背景が「透過」になっています。\n" +
+      "・OK：透過GIFモード（ぼかし影を自動オフにし1bit透過で出力）\n" +
+      "・キャンセル：白背景に自動フォールバックして滑らかな影を維持"
+    );
+    if (choice) {
+      transparentMode = true;
+    } else {
+      fallbackBgColor = "#ffffff";
+    }
   }
 
-  generateExportCode();
+  showProgress("🎞️ コマ送りフレームを撮影中...");
+  const fps = 15;
+  const delayMs = Math.round(1000 / fps);
+  const totalMs = getLoopDurationMs();
+  const totalFrames = Math.max(1, Math.round(totalMs / delayMs));
+
+  try {
+    const fontCss = state.warpMode !== "none" ? await getEmbeddedFontCss(state.font, state.text) : "";
+    const frameBuffers = [];
+    let width = 0, height = 0;
+
+    for (let i = 0; i < totalFrames; i++) {
+      if (isExportCancelled) { hideProgress(); return; }
+      const rawCanvas = await captureFrameCanvas(i * delayMs, fontCss, transparentMode, 640);
+      width = rawCanvas.width;
+      height = rawCanvas.height;
+
+      const workCanvas = document.createElement("canvas");
+      workCanvas.width = width;
+      workCanvas.height = height;
+      const ctx = workCanvas.getContext("2d");
+      if (fallbackBgColor) {
+        ctx.fillStyle = fallbackBgColor;
+        ctx.fillRect(0, 0, width, height);
+      }
+      ctx.drawImage(rawCanvas, 0, 0);
+      const imgData = ctx.getImageData(0, 0, width, height);
+      frameBuffers.push(imgData.data.buffer);
+      updateProgress(((i + 1) / totalFrames) * 50);
+    }
+
+    document.getElementById("progress-title").textContent = "🌈 インラインWorkerでGIF圧縮中...";
+    const worker = createGifWorker();
+    worker.postMessage({
+      frames: frameBuffers,
+      width,
+      height,
+      delay: delayMs,
+      dither: state.gifDither,
+      transparent: transparentMode
+    }, frameBuffers);
+
+    worker.onmessage = (e) => {
+      if (isExportCancelled) { worker.terminate(); hideProgress(); return; }
+      if (e.data.type === "progress") {
+        updateProgress(50 + e.data.pct * 0.5);
+      } else if (e.data.type === "done") {
+        worker.terminate();
+        hideProgress();
+        const blob = new Blob([e.data.buffer], { type: "image/gif" });
+        triggerDownloadOrModal(URL.createObjectURL(blob), `kusodasa-${Date.now()}.gif`, "GIFアニメの保存");
+      }
+    };
+  } catch (err) {
+    hideProgress();
+    showToast("❌ GIF生成中にエラーが発生しました");
+    console.error(err);
+  }
+}
+
+async function exportMp4Video() {
+  if (typeof VideoEncoder === "undefined") {
+    showToast("⚠️ お使いのブラウザはMP4出力に非対応です。GIF保存をご利用ください。");
+    return;
+  }
+  showProgress("🎬 24bitフルカラーMP4動画をエンコード中...");
+  const fps = 20;
+  const delayMs = 1000 / fps;
+  const totalMs = getLoopDurationMs();
+  const totalFrames = Math.max(1, Math.round(totalMs / delayMs));
+
+  try {
+    const fontCss = state.warpMode !== "none" ? await getEmbeddedFontCss(state.font, state.text) : "";
+    const firstCanvas = await captureFrameCanvas(0, fontCss, false, 640);
+    // H.264は偶数解像度が必須
+    const width = firstCanvas.width % 2 === 0 ? firstCanvas.width : firstCanvas.width - 1;
+    const height = firstCanvas.height % 2 === 0 ? firstCanvas.height : firstCanvas.height - 1;
+
+    const muxer = new Muxer({
+      target: new ArrayBufferTarget(),
+      video: { codec: "avc", width, height },
+      fastStart: "in-memory"
+    });
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: e => console.error(e)
+    });
+
+    encoder.configure({
+      codec: "avc1.42001f",
+      width,
+      height,
+      bitrate: 2_000_000,
+      framerate: fps
+    });
+
+    for (let i = 0; i < totalFrames; i++) {
+      if (isExportCancelled) { hideProgress(); return; }
+      const raw = i === 0 ? firstCanvas : await captureFrameCanvas(i * delayMs, fontCss, false, 640);
+      const c = document.createElement("canvas");
+      c.width = width;
+      c.height = height;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = state.bgMode === "transparent" ? "#000000" : "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(raw, 0, 0, width, height);
+
+      const frame = new VideoFrame(c, { timestamp: Math.round(i * delayMs * 1000) });
+      encoder.encode(frame, { keyFrame: i % 20 === 0 });
+      frame.close();
+      updateProgress(((i + 1) / totalFrames) * 90);
+    }
+
+    await encoder.flush();
+    muxer.finalize();
+    hideProgress();
+
+    const blob = new Blob([muxer.target.buffer], { type: "video/mp4" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kusodasa-${Date.now()}.mp4`;
+    a.click();
+    showToast("🎬 MP4動画を保存しました！");
+  } catch (err) {
+    hideProgress();
+    showToast("❌ MP4エンコードに失敗しました。GIF保存をお試しください。");
+    console.error(err);
+  }
+}
+
+// ==========================================
+// 9. Auto-Fit & モーダル・UI同期
+// ==========================================
+function autoFitFontSize() {
+  pushUndo();
+  if (state.canvasSize === "auto") {
+    state.size = 64;
+    state.offsetX = 0;
+    state.offsetY = 0;
+  } else {
+    const [cw, ch] = state.canvasSize.split("x").map(Number);
+    const lines = state.text.split("\n");
+    const maxLen = Math.max(1, ...lines.map(l => l.length));
+    const fitW = Math.floor((cw * 0.85) / maxLen);
+    const fitH = Math.floor((ch * 0.75) / (lines.length * state.lineHeight));
+    state.size = Math.max(16, Math.min(180, Math.min(fitW, fitH)));
+    state.offsetX = 0;
+    state.offsetY = 0;
+  }
+  syncUIFromState();
+  showToast(`🔍 フォントサイズを ${state.size}px に自動フィットしました`);
+}
+
+function openModal(title, htmlContent) {
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-body").innerHTML = htmlContent;
+  document.getElementById("app-modal").hidden = false;
 }
 
 function showToast(msg) {
   const toast = document.getElementById("toast");
   toast.textContent = msg;
   toast.hidden = false;
-  setTimeout(() => { toast.hidden = true; }, 3000);
+  setTimeout(() => { toast.hidden = true; }, 3200);
 }
 
+function syncUIFromState() {
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  const setChk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+  const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+  setVal("ctrl-text", state.text);
+  setTxt("char-count", state.text.length);
+  setVal("ctrl-canvas-size", state.canvasSize);
+  setVal("ctrl-zoom", state.zoom);
+  document.getElementById("zoom-wrapper").style.transform = `scale(${state.zoom})`;
+
+  setVal("ctrl-line-height", state.lineHeight); setTxt("val-line-height", state.lineHeight);
+  setVal("ctrl-size", state.size); setTxt("val-size", state.size);
+  setVal("ctrl-offset-x", state.offsetX); setTxt("val-offset-x", state.offsetX);
+  setVal("ctrl-offset-y", state.offsetY); setTxt("val-offset-y", state.offsetY);
+
+  setVal("ctrl-rainbow-mode", state.rainbowMode);
+  setVal("ctrl-solid-color", state.solidColor);
+  document.getElementById("wrap-solid-color").hidden = state.rainbowMode !== "solid";
+  setVal("ctrl-angle", state.angle); setTxt("val-angle", state.angle);
+  setVal("ctrl-repeat", state.repeat); setTxt("val-repeat", state.repeat);
+  setChk("ctrl-hard-stop", state.hardStop);
+  setChk("ctrl-rainbow-stroke", state.rainbowStroke);
+  setChk("ctrl-rainbow-extrude", state.rainbowExtrude);
+
+  setVal("ctrl-font", state.font);
+  setVal("ctrl-stroke", state.stroke); setTxt("val-stroke", state.stroke);
+  setVal("ctrl-stroke-color", state.strokeColor);
+  setChk("ctrl-triple-stroke", state.tripleStroke);
+  setVal("ctrl-extrude", state.extrude); setTxt("val-extrude", state.extrude);
+  setVal("ctrl-extrude-color", state.extrudeColor);
+  setVal("ctrl-shadow-dist", state.shadowDist); setTxt("val-shadow-dist", state.shadowDist);
+  setVal("ctrl-shadow-blur", state.shadowBlur); setTxt("val-shadow-blur", state.shadowBlur);
+  setVal("ctrl-shadow-color", state.shadowColor);
+
+  setVal("ctrl-warp-mode", state.warpMode);
+  setVal("ctrl-warp-amount", state.warpAmount); setTxt("val-warp-amount", state.warpAmount);
+  setVal("ctrl-skew", state.skew); setTxt("val-skew", state.skew);
+  setVal("ctrl-scale-x", state.scaleX); setTxt("val-scale-x", state.scaleX);
+  setVal("ctrl-perspective", state.perspective); setTxt("val-perspective", state.perspective);
+
+  // 排他仕様：SVGモード時は遠近台形無効化
+  const wrapPersp = document.getElementById("wrap-perspective");
+  const ctrlPersp = document.getElementById("ctrl-perspective");
+  wrapPersp.classList.toggle("disabled-control", state.warpMode !== "none");
+  ctrlPersp.disabled = state.warpMode !== "none";
+
+  setVal("ctrl-rainbow-anim", state.rainbowAnim);
+  setVal("ctrl-motion-anim", state.motionAnim);
+  setVal("ctrl-sub-motion", state.subMotion);
+  setVal("ctrl-speed", state.speed); setTxt("val-speed", state.speed.toFixed(1));
+  setVal("ctrl-easing", state.easing);
+
+  setVal("ctrl-bg-mode", state.bgMode);
+  setVal("ctrl-bg-color1", state.bgColor1);
+  setVal("ctrl-bg-color2", state.bgColor2);
+  document.getElementById("wrap-bg-colors").hidden = !(state.bgMode === "solid" || state.bgMode === "grad2");
+  document.getElementById("wrap-bg-image").hidden = state.bgMode !== "image";
+  setChk("ctrl-img-saturate", state.imgSaturate);
+  setChk("ctrl-img-mosaic", state.imgMosaic);
+  setChk("ctrl-img-rainbow", state.imgRainbow);
+  setVal("ctrl-border-style", state.borderStyle);
+
+  generateExportCode();
+}
+
+// ==========================================
+// 10. 初期化
+// ==========================================
 function init() {
-  // WebCodecs 非対応環境では MP4 ボタンを無効化
   if (typeof VideoEncoder === "undefined") {
     const mp4Btn = document.getElementById("btn-export-mp4");
-    if (mp4Btn) {
-      mp4Btn.disabled = true;
-      mp4Btn.title = "お使いのブラウザはMP4出力に非対応のためGIF保存をご利用ください";
-    }
+    if (mp4Btn) mp4Btn.style.display = "none";
   }
 
-  // URLハッシュから設定復元
+  // URLハッシュ復元
   if (location.hash.startsWith("#config=")) {
     try {
       const decoded = JSON.parse(decodeURIComponent(atob(location.hash.slice(8))));
       state = { ...state, ...decoded, bgImageDataUri: null };
-    } catch (e) {
-      console.warn("URL設定の復元に失敗しました", e);
-    }
+    } catch (e) { console.warn("URL復元失敗", e); }
   }
 
-  // イベント登録
-  const bindInput = (id, key, isNumber = false, isCheckbox = false) => {
+  const bind = (id, key, type = "str") => {
     const el = document.getElementById(id);
+    if (!el) return;
     el.addEventListener("input", () => {
       pushUndo();
-      state[key] = isCheckbox ? el.checked : (isNumber ? Number(el.value) : el.value);
+      state[key] = type === "bool" ? el.checked : (type === "num" ? Number(el.value) : el.value);
       syncUIFromState();
       renderAtTime(performance.now() - startTime);
     });
   };
 
-  bindInput("ctrl-text", "text");
-  bindInput("ctrl-canvas-size", "canvasSize");
-  bindInput("ctrl-rainbow-mode", "rainbowMode");
-  bindInput("ctrl-angle", "angle", true);
-  bindInput("ctrl-repeat", "repeat", true);
-  bindInput("ctrl-hard-stop", "hardStop", false, true);
-  bindInput("ctrl-rainbow-stroke", "rainbowStroke", false, true);
-  bindInput("ctrl-rainbow-extrude", "rainbowExtrude", false, true);
-  bindInput("ctrl-font", "font");
-  bindInput("ctrl-size", "size", true);
-  bindInput("ctrl-stroke", "stroke", true);
-  bindInput("ctrl-stroke-color", "strokeColor");
-  bindInput("ctrl-extrude", "extrude", true);
-  bindInput("ctrl-warp-mode", "warpMode");
-  bindInput("ctrl-warp-amount", "warpAmount", true);
-  bindInput("ctrl-perspective", "perspective", true);
-  bindInput("ctrl-rainbow-anim", "rainbowAnim");
-  bindInput("ctrl-motion-anim", "motionAnim");
-  bindInput("ctrl-speed", "speed", true);
-  bindInput("ctrl-border-style", "borderStyle");
+  bind("ctrl-text", "text");
+  bind("ctrl-canvas-size", "canvasSize");
+  bind("ctrl-zoom", "zoom", "num");
+  bind("ctrl-jpeg-quality", "jpegQuality", "num");
+  bind("ctrl-gif-duration", "gifDuration");
+  bind("ctrl-gif-dither", "gifDither", "bool");
+  bind("ctrl-line-height", "lineHeight", "num");
+  bind("ctrl-size", "size", "num");
+  bind("ctrl-offset-x", "offsetX", "num");
+  bind("ctrl-offset-y", "offsetY", "num");
+  bind("ctrl-rainbow-mode", "rainbowMode");
+  bind("ctrl-solid-color", "solidColor");
+  bind("ctrl-angle", "angle", "num");
+  bind("ctrl-repeat", "repeat", "num");
+  bind("ctrl-hard-stop", "hardStop", "bool");
+  bind("ctrl-rainbow-stroke", "rainbowStroke", "bool");
+  bind("ctrl-rainbow-extrude", "rainbowExtrude", "bool");
+  bind("ctrl-font", "font");
+  bind("ctrl-stroke", "stroke", "num");
+  bind("ctrl-stroke-color", "strokeColor");
+  bind("ctrl-triple-stroke", "tripleStroke", "bool");
+  bind("ctrl-extrude", "extrude", "num");
+  bind("ctrl-extrude-color", "extrudeColor");
+  bind("ctrl-shadow-dist", "shadowDist", "num");
+  bind("ctrl-shadow-blur", "shadowBlur", "num");
+  bind("ctrl-shadow-color", "shadowColor");
+  bind("ctrl-warp-mode", "warpMode");
+  bind("ctrl-warp-amount", "warpAmount", "num");
+  bind("ctrl-skew", "skew", "num");
+  bind("ctrl-scale-x", "scaleX", "num");
+  bind("ctrl-perspective", "perspective", "num");
+  bind("ctrl-rainbow-anim", "rainbowAnim");
+  bind("ctrl-motion-anim", "motionAnim");
+  bind("ctrl-sub-motion", "subMotion");
+  bind("ctrl-speed", "speed", "num");
+  bind("ctrl-easing", "easing");
+  bind("ctrl-bg-mode", "bgMode");
+  bind("ctrl-bg-color1", "bgColor1");
+  bind("ctrl-bg-color2", "bgColor2");
+  bind("ctrl-img-saturate", "imgSaturate", "bool");
+  bind("ctrl-img-mosaic", "imgMosaic", "bool");
+  bind("ctrl-img-rainbow", "imgRainbow", "bool");
+  bind("ctrl-border-style", "borderStyle");
 
-  // 背景モード＆画像アップロード（長辺1280pxリサイズ保護）
-  document.getElementById("ctrl-bg-mode").addEventListener("change", (e) => {
-    pushUndo();
-    state.bgMode = e.target.value;
-    if (state.bgMode === "image") {
-      document.getElementById("ctrl-bg-file").click();
-    }
-    syncUIFromState();
+  document.getElementById("ctrl-jpeg-quality").addEventListener("input", e => {
+    document.getElementById("val-jpeg-quality").textContent = Math.round(e.target.value * 100);
   });
 
-  document.getElementById("ctrl-bg-file").addEventListener("change", (e) => {
+  // タブ切り替え
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const tab = btn.dataset.tab;
+      document.querySelectorAll(".control-group").forEach(grp => {
+        grp.hidden = tab !== "all" && grp.dataset.group !== tab;
+      });
+    });
+  });
+
+  // 画像アップロード（長辺1280pxキャップ）
+  document.getElementById("btn-trigger-upload").addEventListener("click", () => document.getElementById("ctrl-bg-file").click());
+  document.getElementById("ctrl-bg-file").addEventListener("change", e => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      showToast("⚠️ 10MB以下の画像を選択してください");
-      return;
-    }
+    if (file.size > 10 * 1024 * 1024) { showToast("⚠️ 10MB以下の画像を選択してください"); return; }
     const img = new Image();
     img.onload = () => {
       const maxDim = 1280;
       let { width, height } = img;
       if (width > maxDim || height > maxDim) {
-        const ratio = Math.min(maxDim / width, maxDim / height);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
+        const r = Math.min(maxDim / width, maxDim / height);
+        width = Math.round(width * r);
+        height = Math.round(height * r);
       }
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
-      state.bgImageDataUri = canvas.toDataURL("image/jpeg", 0.85);
-      renderAtTime(performance.now() - startTime);
+      const c = document.createElement("canvas");
+      c.width = width; c.height = height;
+      c.getContext("2d").drawImage(img, 0, 0, width, height);
+      state.bgImageDataUri = c.toDataURL("image/jpeg", 0.85);
+      syncUIFromState();
     };
     img.src = URL.createObjectURL(file);
   });
 
-  // プリセット切替（入力テキストは維持）
-  document.getElementById("ctrl-preset").addEventListener("change", (e) => {
+  // プリセット・ランダム・Undo・リセット・AutoFit・共有
+  document.getElementById("ctrl-preset").addEventListener("change", e => {
     pushUndo();
-    const preset = PRESETS[e.target.value];
-    if (preset) {
-      state = { ...state, ...preset };
-      syncUIFromState();
-    }
+    state = { ...state, ...PRESETS[e.target.value] };
+    syncUIFromState();
   });
 
-  // おまかせランダム生成
   document.getElementById("btn-random").addEventListener("click", () => {
     pushUndo();
-    const fonts = Object.keys(FONT_REGISTRY);
-    const modes = ["vivid", "pastel", "cyber", "metallic"];
-    const warps = ["none", "arch", "wave"];
-    const rAnims = ["none", "hue", "flow"];
-    const mAnims = ["none", "rotateY", "bounce", "shake"];
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
     state = {
       ...state,
-      rainbowMode: modes[Math.floor(Math.random() * modes.length)],
+      rainbowMode: pick(["vivid", "pastel", "cyber", "metallic"]),
       angle: Math.floor(Math.random() * 360),
       repeat: Math.floor(Math.random() * 5) + 1,
       hardStop: Math.random() > 0.5,
       rainbowStroke: Math.random() > 0.5,
       rainbowExtrude: Math.random() > 0.5,
-      font: fonts[Math.floor(Math.random() * fonts.length)],
+      font: pick(Object.keys(FONT_REGISTRY)),
       stroke: Math.floor(Math.random() * 10),
-      extrude: Math.floor(Math.random() * 18),
-      warpMode: warps[Math.floor(Math.random() * warps.length)],
+      tripleStroke: Math.random() > 0.5,
+      extrude: Math.floor(Math.random() * 20),
+      warpMode: pick(["none", "arch", "wave"]),
       warpAmount: Math.floor(Math.random() * 120) - 60,
-      rainbowAnim: rAnims[Math.floor(Math.random() * rAnims.length)],
-      motionAnim: mAnims[Math.floor(Math.random() * mAnims.length)],
-      speed: Number((Math.random() * 2.5 + 0.4).toFixed(1))
+      rainbowAnim: pick(["none", "hue", "flow", "charWave"]),
+      motionAnim: pick(["none", "rotate2d", "rotateY", "pulse"]),
+      subMotion: pick(["none", "bounce", "shake"]),
+      speed: Number((Math.random() * 2.5 + 0.4).toFixed(1)),
+      bgMode: pick(["transparent", "sunburst", "rainbowStripe", "space", "sky", "dots"]),
+      borderStyle: pick(["none", "ridge", "groove", "rainbow"])
     };
     syncUIFromState();
   });
 
-  // Undo & リセット
   document.getElementById("btn-undo").addEventListener("click", () => {
-    if (undoStack.length === 0) return;
+    if (!undoStack.length) return;
     state = JSON.parse(undoStack.pop());
-    updateUndoUI();
+    document.getElementById("btn-undo").disabled = undoStack.length === 0;
+    document.getElementById("undo-count").textContent = undoStack.length;
     syncUIFromState();
   });
 
   document.getElementById("btn-reset").addEventListener("click", () => {
     pushUndo();
-    const currentPreset = document.getElementById("ctrl-preset").value;
-    state = { ...state, ...PRESETS[currentPreset], bgImageDataUri: null };
+    const p = document.getElementById("ctrl-preset").value;
+    state = { ...state, ...PRESETS[p], bgImageDataUri: null };
     syncUIFromState();
   });
 
-  // URL共有（アップロード画像は除外）
+  document.getElementById("btn-autofit").addEventListener("click", autoFitFontSize);
+
   document.getElementById("btn-share").addEventListener("click", async () => {
     const { bgImageDataUri, ...shareable } = state;
     const encoded = btoa(encodeURIComponent(JSON.stringify(shareable)));
     const url = `${location.origin}${location.pathname}#config=${encoded}`;
     await navigator.clipboard.writeText(url);
-    if (bgImageDataUri) {
-      showToast("📋 URLをコピーしました（※アップロード画像は共有URLに含まれません）");
-    } else {
-      showToast("📋 このダサ設定のURLをコピーしました！");
-    }
+    showToast(bgImageDataUri
+      ? "📋 URLをコピーしました（※アップロード画像は共有URLに含まれません）"
+      : "📋 このダサ設定のURLをコピーしました！");
   });
 
-  // コードコピー
+  // 書き出しボタン群
+  document.getElementById("btn-export-png").addEventListener("click", () => exportStaticImage("png"));
+  document.getElementById("btn-export-jpeg").addEventListener("click", () => exportStaticImage("jpeg"));
+  document.getElementById("btn-export-gif").addEventListener("click", exportGifAnimation);
+  document.getElementById("btn-export-mp4").addEventListener("click", exportMp4Video);
   document.getElementById("btn-copy-code").addEventListener("click", async () => {
-    const code = generateExportCode();
-    await navigator.clipboard.writeText(code);
+    await navigator.clipboard.writeText(generateExportCode());
     showToast("📋 HTML/CSSコードをコピーしました！");
   });
 
-  // 再生・一時停止
-  document.getElementById("btn-play-pause").addEventListener("click", (e) => {
+  // スマホ用ボトムシートモーダル
+  document.getElementById("btn-mobile-save").addEventListener("click", () => {
+    openModal("💾 画像・GIF・動画の保存", `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button id="m-png" class="btn btn-primary">🖼️ PNG保存（透過・高画質）</button>
+        <button id="m-jpeg" class="btn btn-primary">📷 JPEG保存</button>
+        <button id="m-gif" class="btn btn-rainbow">🎞️ GIFアニメ保存（SNS自動再生用）</button>
+        ${typeof VideoEncoder !== "undefined" ? `<button id="m-mp4" class="btn btn-primary">🎬 MP4動画保存</button>` : ""}
+      </div>
+    `);
+    document.getElementById("m-png").onclick = () => { document.getElementById("app-modal").hidden = true; exportStaticImage("png"); };
+    document.getElementById("m-jpeg").onclick = () => { document.getElementById("app-modal").hidden = true; exportStaticImage("jpeg"); };
+    document.getElementById("m-gif").onclick = () => { document.getElementById("app-modal").hidden = true; exportGifAnimation(); };
+    if (document.getElementById("m-mp4")) {
+      document.getElementById("m-mp4").onclick = () => { document.getElementById("app-modal").hidden = true; exportMp4Video(); };
+    }
+  });
+
+  document.getElementById("btn-mobile-code").addEventListener("click", () => {
+    const code = generateExportCode();
+    openModal("📋 埋め込みHTML/CSSコード", `
+      <textarea readonly rows="8" style="width:100%; margin-bottom:10px;">${escapeHtml(code)}</textarea>
+      <button id="m-copy" class="btn btn-primary" style="width:100%;">ワンクリックコピー</button>
+    `);
+    document.getElementById("m-copy").onclick = async () => {
+      await navigator.clipboard.writeText(code);
+      showToast("📋 コードをコピーしました！");
+    };
+  });
+
+  document.getElementById("btn-close-modal").addEventListener("click", () => document.getElementById("app-modal").hidden = true);
+  document.getElementById("btn-cancel-export").addEventListener("click", () => { isExportCancelled = true; hideProgress(); });
+
+  document.getElementById("btn-play-pause").addEventListener("click", e => {
     isPlaying = !isPlaying;
     e.target.textContent = isPlaying ? "⏸️ 一時停止" : "▶️ 再生";
   });
 
   syncUIFromState();
 
-  // メインプレビューループ（描画自体はステートレスな renderAtTime(t) に委譲）
   function tick(now) {
-    if (isPlaying) {
-      renderAtTime(now - startTime);
-    }
+    if (isPlaying) renderAtTime(now - startTime);
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
