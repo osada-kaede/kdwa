@@ -27,7 +27,7 @@
     <!-- 左カラム：プレビュー＆出力エリア -->
     <section class="preview-section">
       <div class="preview-toolbar">
-        <label class="inline-label">サイズ:
+        <label class="inline-label">出力枠サイズ:
           <select id="ctrl-canvas-size">
             <option value="auto">文字に自動フィット</option>
             <option value="800x800">SNSアイコン (1:1 / 800×800)</option>
@@ -36,20 +36,24 @@
             <option value="88x31">平成ミニバナー (88×31)</option>
           </select>
         </label>
-        <label class="inline-label">倍率:
-          <select id="ctrl-zoom">
-            <option value="0.5">50%</option>
-            <option value="0.75">75%</option>
-            <option value="1" selected>100%</option>
-            <option value="1.5">150%</option>
-          </select>
-        </label>
-        <button id="btn-autofit" class="btn btn-sm">🔍 枠に自動フィット</button>
+        <button id="btn-autofit" class="btn btn-sm" title="文字サイズを枠内に自動調整">🔍 文字を枠にフィット</button>
         <button id="btn-play-pause" class="btn btn-sm">⏸️ 一時停止</button>
+
+        <!-- プレビュー表示倍率・パン操作コントロール -->
+        <div class="viewport-controls">
+          <button id="btn-zoom-out" class="btn btn-sm" title="縮小">－</button>
+          <span id="zoom-badge" class="zoom-badge" title="現在のプレビュー表示倍率">100%</span>
+          <button id="btn-zoom-in" class="btn btn-sm" title="拡大">＋</button>
+          <button id="btn-view-reset" class="btn btn-sm" title="表示倍率とドラッグ位置をリセット">🎯 視点リセット</button>
+        </div>
       </div>
 
-      <div class="preview-stage" id="preview-stage">
-        <div id="zoom-wrapper" style="transform-origin: center center;">
+      <div class="preview-stage" id="preview-stage" title="ドラッグで移動 / ホイールで拡大縮小">
+        <div class="stage-hud">
+          <span>表示倍率: <strong id="hud-zoom-text">100%</strong></span>
+          <span>（ドラッグで移動 / ホイールでズーム）</span>
+        </div>
+        <div id="viewport-transform" style="transform-origin: center center; will-change: transform;">
           <div id="wordart-mount"></div>
         </div>
       </div>
@@ -63,7 +67,7 @@
           </label>
           <label class="inline-label">GIF尺:
             <select id="ctrl-gif-duration">
-              <option value="auto" selected>自動ループ</option>
+              <option value="auto" selected>自動ループ(最小公倍数)</option>
               <option value="1">1秒</option>
               <option value="2">2秒</option>
               <option value="3">3秒</option>
@@ -81,27 +85,29 @@
           <button id="btn-copy-code" class="btn">📋 HTML/CSSコピー</button>
         </div>
         <div id="code-image-notice" class="notice-text" hidden>※アップロード画像はコード肥大化防止のためプレースホルダー（/* ここに画像のURLを指定してください */）で出力されます。</div>
-        <textarea id="code-output" readonly rows="5" placeholder="ここにコピペ用HTML/CSSコードが生成されます"></textarea>
+        <textarea id="code-output" readonly rows="4" placeholder="ここにコピペ用HTML/CSSコードが生成されます"></textarea>
       </div>
     </section>
 
-    <!-- 右カラム：コントロールパネル（タブ切替＋全パラメーター） -->
+    <!-- 右カラム：役割ごとに徹底分離されたコントロールパネル -->
     <section class="controls-section">
       <div class="tab-bar">
-        <button class="tab-btn active" data-tab="all">すべて表示</button>
-        <button class="tab-btn" data-tab="text">文字・プリセット</button>
-        <button class="tab-btn" data-tab="rainbow">虹・装飾</button>
-        <button class="tab-btn" data-tab="warp">変形・動き</button>
-        <button class="tab-btn" data-tab="bg">背景・枠線</button>
+        <button class="tab-btn active" data-tab="all">すべて</button>
+        <button class="tab-btn" data-tab="text">①文字</button>
+        <button class="tab-btn" data-tab="font">②書体・立体</button>
+        <button class="tab-btn" data-tab="color">③虹・色</button>
+        <button class="tab-btn" data-tab="shape">④形・変形</button>
+        <button class="tab-btn" data-tab="motion">⑤文字の動き</button>
+        <button class="tab-btn" data-tab="bg">⑥背景・枠</button>
       </div>
 
-      <!-- A. テキスト＆プリセット -->
+      <!-- ① テキスト＆配置（純粋な文字内容と座標のみ） -->
       <div class="control-group" data-group="text">
-        <h2>📝 テキスト＆ダサプリセット</h2>
+        <h2>① テキスト・配置（内容と位置）</h2>
         <textarea id="ctrl-text" maxlength="100" rows="2" placeholder="最大100文字まで入力可能">祝！キリ番10000HIT達成！！</textarea>
         <div class="char-counter"><span id="char-count">15</span> / 100文字</div>
 
-        <label>ワンクリック・トータルプリセット（文字は維持）:
+        <label>ワンクリック・トータルプリセット（入力文字は維持）:
           <select id="ctrl-preset">
             <option value="excel97">1. 王道・Excel97虹色アーチ</option>
             <option value="gaming">2. ゲーミング極彩色フラッシュ</option>
@@ -112,27 +118,74 @@
         </label>
 
         <div class="grid-2">
-          <label>行間: <span id="val-line-height">1.2</span>
-            <input type="range" id="ctrl-line-height" min="0.8" max="2.5" step="0.1" value="1.2" />
+          <label>文字の横位置 (X): <span id="val-offset-x">0</span>px
+            <input type="range" id="ctrl-offset-x" min="-400" max="400" value="0" />
           </label>
-          <label>文字サイズ: <span id="val-size">64</span>px
-            <input type="range" id="ctrl-size" min="16" max="180" value="64" />
+          <label>文字の縦位置 (Y): <span id="val-offset-y">0</span>px
+            <input type="range" id="ctrl-offset-y" min="-400" max="400" value="0" />
           </label>
         </div>
+        <label>行間倍率: <span id="val-line-height">1.2</span>
+          <input type="range" id="ctrl-line-height" min="0.8" max="2.5" step="0.1" value="1.2" />
+        </label>
+      </div>
+
+      <!-- ② フォント・輪郭・立体感（書体と厚みのみ） -->
+      <div class="control-group" data-group="font">
+        <h2>② 書体・輪郭・3D立体（フォントと厚み）</h2>
         <div class="grid-2">
-          <label>X軸オフセット: <span id="val-offset-x">0</span>px
-            <input type="range" id="ctrl-offset-x" min="-300" max="300" value="0" />
+          <label>Webフォント:
+            <select id="ctrl-font">
+              <option value="Dela Gothic One">極太ゴシック (Dela Gothic One)</option>
+              <option value="Reggae One">トゲトゲポップ (Reggae One)</option>
+              <option value="RocknRoll One">ロックンロール (RocknRoll One)</option>
+              <option value="Noto Sans JP">標準ゴシック (Noto Sans JP)</option>
+              <option value="Noto Serif JP">重厚明朝 (Noto Serif JP)</option>
+            </select>
           </label>
-          <label>Y軸オフセット: <span id="val-offset-y">0</span>px
-            <input type="range" id="ctrl-offset-y" min="-300" max="300" value="0" />
+          <label>文字サイズ: <span id="val-size">64</span>px
+            <input type="range" id="ctrl-size" min="16" max="240" value="64" />
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label>輪郭線の太さ: <span id="val-stroke">4</span>px
+            <input type="range" id="ctrl-stroke" min="0" max="20" value="4" />
+          </label>
+          <label>輪郭線の色:
+            <input type="color" id="ctrl-stroke-color" value="#000080" />
+          </label>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="ctrl-triple-stroke" /> 三重線風の多重縁取りにする
+        </label>
+
+        <div class="grid-2">
+          <label>3D押し出し層数 (最大25層): <span id="val-extrude">6</span>層
+            <input type="range" id="ctrl-extrude" min="0" max="25" value="6" />
+          </label>
+          <label>3D押し出し単色:
+            <input type="color" id="ctrl-extrude-color" value="#1e1b4b" />
+          </label>
+        </div>
+
+        <div class="grid-3">
+          <label>影距離: <span id="val-shadow-dist">6</span>px
+            <input type="range" id="ctrl-shadow-dist" min="0" max="40" value="6" />
+          </label>
+          <label>影ぼかし: <span id="val-shadow-blur">4</span>px
+            <input type="range" id="ctrl-shadow-blur" min="0" max="30" value="4" />
+          </label>
+          <label>影色:
+            <input type="color" id="ctrl-shadow-color" value="#000000" />
           </label>
         </div>
       </div>
 
-      <!-- B-1. 虹（レインボー）設定 -->
-      <div class="control-group" data-group="rainbow">
-        <h2>🌈 虹（レインボー）徹底設定</h2>
-        <label>カラーモード:
+      <!-- ③ 虹・カラー（文字の配色のみ） -->
+      <div class="control-group" data-group="color">
+        <h2>③ 虹・カラー（文字の配色ルール）</h2>
+        <label>文字カラーモード:
           <select id="ctrl-rainbow-mode">
             <option value="vivid">極彩色レインボー（原色7色）</option>
             <option value="pastel">パステル虹</option>
@@ -156,61 +209,17 @@
           <input type="checkbox" id="ctrl-hard-stop" /> ハードストップ（境界ぼかし無しのクッキリ縞模様）
         </label>
         <label class="checkbox-label">
-          <input type="checkbox" id="ctrl-rainbow-stroke" /> 輪郭線（Stroke）を虹にする
+          <input type="checkbox" id="ctrl-rainbow-stroke" /> 輪郭線（Stroke）も虹にする
         </label>
         <label class="checkbox-label">
-          <input type="checkbox" id="ctrl-rainbow-extrude" /> 3D立体側面を虹のグラデーションにする
+          <input type="checkbox" id="ctrl-rainbow-extrude" /> 3D立体側面も虹のグラデーションにする
         </label>
       </div>
 
-      <!-- B-2. フォント・輪郭・立体感 -->
-      <div class="control-group" data-group="rainbow">
-        <h2>🔤 フォント・輪郭・3D立体・影</h2>
-        <label>Webフォント:
-          <select id="ctrl-font">
-            <option value="Dela Gothic One">極太ゴシック (Dela Gothic One)</option>
-            <option value="Reggae One">トゲトゲポップ (Reggae One)</option>
-            <option value="RocknRoll One">ロックンロール (RocknRoll One)</option>
-            <option value="Noto Sans JP">標準ゴシック (Noto Sans JP)</option>
-            <option value="Noto Serif JP">重厚明朝 (Noto Serif JP)</option>
-          </select>
-        </label>
-        <div class="grid-2">
-          <label>輪郭線の太さ: <span id="val-stroke">4</span>px
-            <input type="range" id="ctrl-stroke" min="0" max="20" value="4" />
-          </label>
-          <label>輪郭線の色:
-            <input type="color" id="ctrl-stroke-color" value="#000080" />
-          </label>
-        </div>
-        <label class="checkbox-label">
-          <input type="checkbox" id="ctrl-triple-stroke" /> 三重線風の多重縁取りにする
-        </label>
-        <div class="grid-2">
-          <label>3D押し出し層数 (最大25層): <span id="val-extrude">6</span>層
-            <input type="range" id="ctrl-extrude" min="0" max="25" value="6" />
-          </label>
-          <label>3D押し出し単色:
-            <input type="color" id="ctrl-extrude-color" value="#1e1b4b" />
-          </label>
-        </div>
-        <div class="grid-3">
-          <label>影距離: <span id="val-shadow-dist">6</span>px
-            <input type="range" id="ctrl-shadow-dist" min="0" max="40" value="6" />
-          </label>
-          <label>影ぼかし: <span id="val-shadow-blur">4</span>px
-            <input type="range" id="ctrl-shadow-blur" min="0" max="30" value="4" />
-          </label>
-          <label>影色:
-            <input type="color" id="ctrl-shadow-color" value="#000000" />
-          </label>
-        </div>
-      </div>
-
-      <!-- B-3. 変形（Transform / Warp） -->
-      <div class="control-group" data-group="warp">
-        <h2>📐 変形（アーチ・波形・遠近台形）</h2>
-        <label>変形モード:
+      <!-- ④ 変形・形（文字の歪み・カーブのみ） -->
+      <div class="control-group" data-group="shape">
+        <h2>④ 変形・形（アーチ・波形・遠近台形）</h2>
+        <label>変形タイプ:
           <select id="ctrl-warp-mode">
             <option value="none">直線（HTML/CSS描画モード）</option>
             <option value="arch">半円アーチ / 逆アーチ（SVGモード）</option>
@@ -233,53 +242,66 @@
         </label>
       </div>
 
-      <!-- C. アニメーション（動くダサさ） -->
-      <div class="control-group" data-group="warp">
-        <h2>⚡ 動くダサさ（複合アニメーション）</h2>
-        <label>虹アニメーション:
-          <select id="ctrl-rainbow-anim">
-            <option value="none">なし</option>
-            <option value="hue">ゲーミング発光（色相高速回転）</option>
-            <option value="flow">流れるレインボー（グラデ移動）</option>
-            <option value="charWave">1文字ずつ時間差ウェーブ虹</option>
-          </select>
-        </label>
-        <label>モーション1（回転・ズーム）:
-          <select id="ctrl-motion-anim">
-            <option value="none">なし</option>
-            <option value="rotate2d">2Dぐるぐる回転</option>
-            <option value="rotateY">虚無のY軸3D回転</option>
-            <option value="rotateX">X軸3D回転</option>
-            <option value="drill">ドリル3D回転</option>
-            <option value="pulse">脈動ズームインアウト</option>
-          </select>
-        </label>
-        <label>モーション2（複合コンボ用：揺れ・移動）:
-          <select id="ctrl-sub-motion">
-            <option value="none">なし</option>
-            <option value="bounce">上下バウンド</option>
-            <option value="shake">ガタガタ震える</option>
-            <option value="marquee">マーキー風横スクロール</option>
-          </select>
-        </label>
-        <div class="grid-2">
-          <label>周期 (最短0.3秒): <span id="val-speed">2.0</span>秒
-            <input type="range" id="ctrl-speed" min="0.3" max="10.0" step="0.1" value="2.0" />
-          </label>
-          <label>イージング:
-            <select id="ctrl-easing">
-              <option value="linear">リニア（一定速度）</option>
-              <option value="easeInOut">滑らか加減速</option>
-              <option value="bounce">バウンス弾み</option>
+      <!-- ⑤ 文字の動き（色変化速度と文字回転速度を完全分離） -->
+      <div class="control-group" data-group="motion">
+        <h2>⑤ 文字の動き（色アニメ速度 &amp; 文字回転速度を個別設定）</h2>
+
+        <div class="sub-card">
+          <div class="sub-card-title">🌈 文字の「色変化」アニメーション</div>
+          <label>色アニメ種類:
+            <select id="ctrl-rainbow-anim">
+              <option value="none">なし</option>
+              <option value="hue">ゲーミング発光（色相高速回転）</option>
+              <option value="flow">流れるレインボー（グラデ移動）</option>
+              <option value="charWave">1文字ずつ時間差ウェーブ虹</option>
             </select>
           </label>
+          <label>色変化の1周時間（速度）: <span id="val-rainbow-speed">2.0</span>秒
+            <input type="range" id="ctrl-rainbow-speed" min="0.3" max="10.0" step="0.1" value="2.0" />
+          </label>
         </div>
-        <p class="notice-text">⚠️ 光過敏性発作への配慮のため、明滅周期は最短0.3秒（約3.3Hz）に制限されています。</p>
+
+        <div class="sub-card">
+          <div class="sub-card-title">🌀 文字の「物理回転・揺れ」アニメーション</div>
+          <div class="grid-2">
+            <label>メイン回転・拡大:
+              <select id="ctrl-motion-anim">
+                <option value="none">なし</option>
+                <option value="rotate2d">2Dぐるぐる回転</option>
+                <option value="rotateY">虚無のY軸3D回転</option>
+                <option value="rotateX">X軸3D回転</option>
+                <option value="drill">ドリル3D回転</option>
+                <option value="pulse">脈動ズームインアウト</option>
+              </select>
+            </label>
+            <label>サブ揺れ・移動:
+              <select id="ctrl-sub-motion">
+                <option value="none">なし</option>
+                <option value="bounce">上下バウンド</option>
+                <option value="shake">ガタガタ震える</option>
+                <option value="marquee">マーキー風横スクロール</option>
+              </select>
+            </label>
+          </div>
+          <div class="grid-2">
+            <label>文字の動きの1周時間（速度）: <span id="val-motion-speed">2.0</span>秒
+              <input type="range" id="ctrl-motion-speed" min="0.3" max="10.0" step="0.1" value="2.0" />
+            </label>
+            <label>イージング:
+              <select id="ctrl-easing">
+                <option value="linear">リニア（一定速度）</option>
+                <option value="easeInOut">滑らか加減速</option>
+                <option value="bounce">バウンス弾み</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <p class="notice-text">⚠️ 光過敏性発作への配慮のため、各周期は最短0.3秒（約3.3Hz）に制限されています。</p>
       </div>
 
-      <!-- D. 背景編集＆平成フレーム -->
+      <!-- ⑥ 背景・枠線（背景のサイズ・回転速度を文字から完全分離） -->
       <div class="control-group" data-group="bg">
-        <h2>🖼️ 背景＆平成フレーム装飾</h2>
+        <h2>⑥ 背景・枠線（背景サイズ &amp; 背景回転速度を個別設定）</h2>
         <label>背景モード:
           <select id="ctrl-bg-mode">
             <option value="transparent">透過（市松模様プレビュー）</option>
@@ -294,6 +316,15 @@
             <option value="image">画像アップロード（最大10MB）</option>
           </select>
         </label>
+
+        <div class="grid-2">
+          <label>背景の拡大率 / タイルサイズ: <span id="val-bg-scale">100</span>%
+            <input type="range" id="ctrl-bg-scale" min="20" max="300" step="5" value="100" />
+          </label>
+          <label>背景の回転・移動速度（1周）: <span id="val-bg-speed">3.0</span>秒
+            <input type="range" id="ctrl-bg-speed" min="0.3" max="10.0" step="0.1" value="3.0" />
+          </label>
+        </div>
 
         <div id="wrap-bg-colors" class="grid-2" hidden>
           <label>背景色1: <input type="color" id="ctrl-bg-color1" value="#000080" /></label>
@@ -326,7 +357,7 @@
     <button id="btn-mobile-code" class="btn">📋 コード出力</button>
   </footer>
 
-  <!-- 汎用モーダル（スマホ用保存/コード出力、書き出し結果長押し保存、透過GIF確認） -->
+  <!-- 汎用モーダル -->
   <div id="app-modal" class="modal-backdrop" hidden>
     <div class="modal-box">
       <div class="modal-header">
@@ -337,7 +368,7 @@
     </div>
   </div>
 
-  <!-- 書き出し進捗オーバーレイ（ダサい虹色プログレスバー） -->
+  <!-- 書き出し進捗オーバーレイ -->
   <div id="progress-overlay" class="modal-backdrop" hidden>
     <div class="modal-box" style="text-align:center;">
       <h3 id="progress-title">🌈 ダサ画像・GIFを錬成中...</h3>

@@ -31,7 +31,7 @@ const FONT_REGISTRY = {
 const fontBufferCache = new Map();
 
 // ==========================================
-// 2. トータルプリセット定義（文字は維持仕様）
+// 2. トータルプリセット定義（文字は維持・速度やサイズも個別設定）
 // ==========================================
 const PRESETS = {
   excel97: {
@@ -41,8 +41,9 @@ const PRESETS = {
     stroke: 3, strokeColor: "#000080", tripleStroke: false,
     extrude: 6, extrudeColor: "#1e1b4b", shadowDist: 6, shadowBlur: 4, shadowColor: "#000000",
     warpMode: "arch", warpAmount: 35, skew: 0, scaleX: 1.0, perspective: 0,
-    rainbowAnim: "none", motionAnim: "none", subMotion: "none", speed: 2.0, easing: "linear",
-    bgMode: "transparent", bgColor1: "#000080", bgColor2: "#008080", borderStyle: "none"
+    rainbowAnim: "none", rainbowSpeed: 2.0,
+    motionAnim: "none", subMotion: "none", motionSpeed: 2.0, easing: "linear",
+    bgMode: "transparent", bgScale: 100, bgSpeed: 3.0, bgColor1: "#000080", bgColor2: "#008080", borderStyle: "none"
   },
   gaming: {
     rainbowMode: "cyber", solidColor: "#ff0055", angle: 45, repeat: 2, hardStop: false,
@@ -51,8 +52,9 @@ const PRESETS = {
     stroke: 4, strokeColor: "#ffffff", tripleStroke: true,
     extrude: 10, extrudeColor: "#000000", shadowDist: 0, shadowBlur: 12, shadowColor: "#00ffcc",
     warpMode: "none", warpAmount: 0, skew: -8, scaleX: 1.0, perspective: 0,
-    rainbowAnim: "hue", motionAnim: "pulse", subMotion: "shake", speed: 0.4, easing: "linear",
-    bgMode: "solid", bgColor1: "#000000", bgColor2: "#111111", borderStyle: "rainbow"
+    rainbowAnim: "hue", rainbowSpeed: 0.4,
+    motionAnim: "pulse", subMotion: "shake", motionSpeed: 0.8, easing: "linear",
+    bgMode: "solid", bgScale: 100, bgSpeed: 3.0, bgColor1: "#000000", bgColor2: "#111111", borderStyle: "rainbow"
   },
   kiriban: {
     rainbowMode: "vivid", solidColor: "#ff0055", angle: 0, repeat: 1, hardStop: true,
@@ -61,8 +63,9 @@ const PRESETS = {
     stroke: 6, strokeColor: "#ffffff", tripleStroke: true,
     extrude: 5, extrudeColor: "#000080", shadowDist: 4, shadowBlur: 2, shadowColor: "#000000",
     warpMode: "wave", warpAmount: 25, skew: 0, scaleX: 1.0, perspective: 0,
-    rainbowAnim: "charWave", motionAnim: "none", subMotion: "bounce", speed: 1.5, easing: "bounce",
-    bgMode: "space", bgColor1: "#000022", bgColor2: "#000044", borderStyle: "ridge"
+    rainbowAnim: "charWave", rainbowSpeed: 1.2,
+    motionAnim: "none", subMotion: "bounce", motionSpeed: 1.5, easing: "bounce",
+    bgMode: "space", bgScale: 100, bgSpeed: 4.0, bgColor1: "#000022", bgColor2: "#000044", borderStyle: "ridge"
   },
   pachinko: {
     rainbowMode: "metallic", solidColor: "#ffd700", angle: 135, repeat: 3, hardStop: true,
@@ -71,8 +74,9 @@ const PRESETS = {
     stroke: 6, strokeColor: "#ff0000", tripleStroke: true,
     extrude: 20, extrudeColor: "#880000", shadowDist: 10, shadowBlur: 6, shadowColor: "#000000",
     warpMode: "none", warpAmount: 0, skew: -10, scaleX: 1.1, perspective: -20,
-    rainbowAnim: "hue", motionAnim: "pulse", subMotion: "none", speed: 0.8, easing: "easeInOut",
-    bgMode: "sunburst", bgColor1: "#ff0000", bgColor2: "#ffff00", borderStyle: "rainbow"
+    rainbowAnim: "hue", rainbowSpeed: 0.6,
+    motionAnim: "pulse", subMotion: "none", motionSpeed: 1.2, easing: "easeInOut",
+    bgMode: "sunburst", bgScale: 150, bgSpeed: 2.5, bgColor1: "#ff0000", bgColor2: "#ffff00", borderStyle: "rainbow"
   },
   void3d: {
     rainbowMode: "pastel", solidColor: "#a5f3fc", angle: 90, repeat: 1, hardStop: false,
@@ -81,18 +85,18 @@ const PRESETS = {
     stroke: 2, strokeColor: "#1e3a8a", tripleStroke: false,
     extrude: 14, extrudeColor: "#1e3a8a", shadowDist: 12, shadowBlur: 8, shadowColor: "#000000",
     warpMode: "none", warpAmount: 0, skew: 0, scaleX: 1.0, perspective: 0,
-    rainbowAnim: "flow", motionAnim: "rotateY", subMotion: "none", speed: 3.0, easing: "linear",
-    bgMode: "grad2", bgColor1: "#1e3a8a", bgColor2: "#3b82f6", borderStyle: "groove"
+    rainbowAnim: "flow", rainbowSpeed: 1.8,
+    motionAnim: "rotateY", subMotion: "none", motionSpeed: 4.0, easing: "linear",
+    bgMode: "grad2", bgScale: 100, bgSpeed: 3.0, bgColor1: "#1e3a8a", bgColor2: "#3b82f6", borderStyle: "groove"
   }
 };
 
 // ==========================================
-// 3. 状態管理 & Undo履歴
+// 3. 状態管理 & Undo履歴 & ビューポート(表示倍率・パン)
 // ==========================================
 let state = {
   text: "祝！キリ番10000HIT達成！！",
   canvasSize: "auto",
-  zoom: 1,
   jpegQuality: 0.85,
   gifDuration: "auto",
   gifDither: true,
@@ -101,6 +105,16 @@ let state = {
   imgMosaic: false,
   imgRainbow: false,
   ...PRESETS.excel97
+};
+
+// プレビュー表示専用の拡大縮小・移動状態（出力画像サイズには干渉しない）
+const viewport = {
+  zoom: 1.0,
+  panX: 0,
+  panY: 0,
+  isDragging: false,
+  dragStartX: 0,
+  dragStartY: 0
 };
 
 const undoStack = [];
@@ -115,6 +129,18 @@ function pushUndo() {
   const btn = document.getElementById("btn-undo");
   btn.disabled = undoStack.length === 0;
   document.getElementById("undo-count").textContent = undoStack.length;
+}
+
+function updateViewportTransform() {
+  const el = document.getElementById("viewport-transform");
+  if (el) {
+    el.style.transform = `translate(${viewport.panX}px, ${viewport.panY}px) scale(${viewport.zoom})`;
+  }
+  const pctText = `${Math.round(viewport.zoom * 100)}%`;
+  const badge = document.getElementById("zoom-badge");
+  const hud = document.getElementById("hud-zoom-text");
+  if (badge) badge.textContent = pctText;
+  if (hud) hud.textContent = pctText;
 }
 
 // ==========================================
@@ -159,18 +185,28 @@ function buildGradientCSS(s) {
 }
 
 // ==========================================
-// 5. 時刻 t 同期型の決定論的描画エンジン
+// 5. 時刻 t 同期型の決定論的描画エンジン（色速度・文字速度・背景速度・背景サイズを完全分離）
 // ==========================================
 function renderAtTime(tMs, options = {}) {
   const mount = options.targetMount || document.getElementById("wordart-mount");
-  const periodMs = Math.max(300, state.speed * 1000);
-  const rawProgress = (tMs % periodMs) / periodMs;
-  const p = applyEasing(rawProgress, state.easing);
+
+  // 1) 文字の「色変化」進行度（rainbowSpeed）
+  const colorPeriodMs = Math.max(300, state.rainbowSpeed * 1000);
+  const colorProgress = (tMs % colorPeriodMs) / colorPeriodMs;
+
+  // 2) 文字の「物理モーション」進行度（motionSpeed）
+  const motionPeriodMs = Math.max(300, state.motionSpeed * 1000);
+  const rawMotionProgress = (tMs % motionPeriodMs) / motionPeriodMs;
+  const p = applyEasing(rawMotionProgress, state.easing);
+
+  // 3) 背景の「回転・移動」進行度（bgSpeed）
+  const bgPeriodMs = Math.max(300, state.bgSpeed * 1000);
+  const bgProgress = (tMs % bgPeriodMs) / bgPeriodMs;
 
   // 色相回転（ゲーミング発光）
-  let hueDeg = state.rainbowAnim === "hue" ? Math.round(rawProgress * 360) : 0;
+  const hueDeg = state.rainbowAnim === "hue" ? Math.round(colorProgress * 360) : 0;
 
-  // 変形・モーション合成
+  // 変形・モーション合成（文字の位置・形・動き）
   let transforms = [`translate(${state.offsetX}px, ${state.offsetY}px)`];
   if (state.skew !== 0) transforms.push(`skewX(${state.skew}deg)`);
   if (state.scaleX !== 1.0) transforms.push(`scaleX(${state.scaleX})`);
@@ -188,87 +224,100 @@ function renderAtTime(tMs, options = {}) {
     transforms.push(`scale(${sc.toFixed(3)})`);
   }
 
-  // サブモーション（複合コンボ）
+  // サブモーション
   if (state.subMotion === "bounce") {
-    const y = -Math.abs(Math.sin(rawProgress * Math.PI * 2)) * 22;
+    const y = -Math.abs(Math.sin(rawMotionProgress * Math.PI * 2)) * 22;
     transforms.push(`translateY(${y.toFixed(1)}px)`);
   } else if (state.subMotion === "shake") {
-    const x = Math.sin(rawProgress * Math.PI * 10) * 6;
-    const r = Math.cos(rawProgress * Math.PI * 8) * 3;
+    const x = Math.sin(rawMotionProgress * Math.PI * 10) * 6;
+    const r = Math.cos(rawMotionProgress * Math.PI * 8) * 3;
     transforms.push(`translateX(${x.toFixed(1)}px) rotate(${r.toFixed(1)}deg)`);
   } else if (state.subMotion === "marquee") {
-    const mx = (0.5 - rawProgress) * 260;
+    const mx = (0.5 - rawMotionProgress) * 260;
     transforms.push(`translateX(${mx.toFixed(1)}px)`);
   }
 
   const transformStr = transforms.join(" ");
 
-  // 背景スタイル
+  // 4) 背景スタイル（bgScale と bgProgress を独立適用）
+  const scaleFactor = state.bgScale / 100;
   let bgStyle = "background: transparent;";
-  let bgOverlayHtml = "";
+  let bgLayerHtml = "";
+
   if (state.bgMode === "solid") {
     bgStyle = `background: ${state.bgColor1};`;
   } else if (state.bgMode === "grad2") {
     bgStyle = `background: linear-gradient(135deg, ${state.bgColor1}, ${state.bgColor2});`;
   } else if (state.bgMode === "sunburst") {
-    bgStyle = `background: repeating-conic-gradient(from ${rawProgress * 360}deg, #ff0000 0deg 15deg, #ffff00 15deg 30deg, #00ff00 30deg 45deg, #00ffff 45deg 60deg, #ff00ff 60deg 75deg);`;
+    const rayDeg = Math.max(4, Math.round(15 * scaleFactor));
+    bgLayerHtml += `<div style="position:absolute;inset:-50%;background:repeating-conic-gradient(from ${bgProgress * 360}deg, #ff0000 0deg ${rayDeg}deg, #ffff00 ${rayDeg}deg ${rayDeg*2}deg, #00ff00 ${rayDeg*2}deg ${rayDeg*3}deg, #00ffff ${rayDeg*3}deg ${rayDeg*4}deg, #ff00ff ${rayDeg*4}deg ${rayDeg*5}deg);"></div>`;
   } else if (state.bgMode === "rainbowStripe") {
-    const pos = Math.round(rawProgress * 200);
-    bgStyle = `background: repeating-linear-gradient(45deg, #ff0000 0 20px, #ffff00 20px 40px, #00ff00 40px 60px, #00ffff 60px 80px, #ff00ff 80px 100px); background-position: ${pos}px 0;`;
+    const stripeW = Math.max(8, Math.round(20 * scaleFactor));
+    const totalW = stripeW * 5;
+    const pos = Math.round(bgProgress * totalW);
+    bgStyle = `background: repeating-linear-gradient(45deg, #ff0000 0 ${stripeW}px, #ffff00 ${stripeW}px ${stripeW*2}px, #00ff00 ${stripeW*2}px ${stripeW*3}px, #00ffff ${stripeW*3}px ${stripeW*4}px, #ff00ff ${stripeW*4}px ${totalW}px); background-position: ${pos}px 0;`;
   } else if (state.bgMode === "space") {
-    bgStyle = `background-color: #000022; background-image: radial-gradient(#ffffff 1.5px, transparent 1.5px), radial-gradient(#ffff00 1px, transparent 1px); background-size: 40px 40px; background-position: 0 0, 20px 20px;`;
+    const tile = Math.max(12, Math.round(40 * scaleFactor));
+    const half = Math.round(tile / 2);
+    const move = Math.round(bgProgress * tile);
+    bgStyle = `background-color: #000022; background-image: radial-gradient(#ffffff 1.5px, transparent 1.5px), radial-gradient(#ffff00 1px, transparent 1px); background-size: ${tile}px ${tile}px; background-position: ${move}px ${move}px, ${half + move}px ${half + move}px;`;
   } else if (state.bgMode === "brick") {
-    bgStyle = `background-color: #991b1b; background-image: linear-gradient(335deg, #7f1d1d 23px, transparent 23px), linear-gradient(155deg, #7f1d1d 23px, transparent 23px); background-size: 58px 58px;`;
+    const tile = Math.max(20, Math.round(58 * scaleFactor));
+    bgStyle = `background-color: #991b1b; background-image: linear-gradient(335deg, #7f1d1d ${Math.round(tile*0.4)}px, transparent ${Math.round(tile*0.4)}px), linear-gradient(155deg, #7f1d1d ${Math.round(tile*0.4)}px, transparent ${Math.round(tile*0.4)}px); background-size: ${tile}px ${tile}px;`;
   } else if (state.bgMode === "sky") {
-    bgStyle = `background: radial-gradient(circle at 30% 30%, #ffffff 18%, transparent 19%), radial-gradient(circle at 42% 33%, #ffffff 14%, transparent 15%), linear-gradient(180deg, #0284c7, #7dd3fc);`;
+    const tile = Math.max(40, Math.round(140 * scaleFactor));
+    const move = Math.round(bgProgress * tile);
+    bgStyle = `background-color: #38bdf8; background-image: radial-gradient(circle at 30% 35%, #ffffff 18%, transparent 19%), radial-gradient(circle at 46% 38%, #ffffff 14%, transparent 15%); background-size: ${tile}px ${tile}px; background-position: ${move}px 0;`;
   } else if (state.bgMode === "dots") {
-    bgStyle = `background-color: #fef08a; background-image: radial-gradient(#ef4444 20%, transparent 20%), radial-gradient(#3b82f6 20%, transparent 20%); background-size: 40px 40px; background-position: 0 0, 20px 20px;`;
+    const tile = Math.max(12, Math.round(40 * scaleFactor));
+    const half = Math.round(tile / 2);
+    const move = Math.round(bgProgress * tile);
+    bgStyle = `background-color: #fef08a; background-image: radial-gradient(#ef4444 22%, transparent 23%), radial-gradient(#3b82f6 22%, transparent 23%); background-size: ${tile}px ${tile}px; background-position: ${move}px 0, ${half + move}px ${half}px;`;
   } else if (state.bgMode === "image" && state.bgImageDataUri) {
     const filters = [];
     if (state.imgSaturate) filters.push("saturate(260%) contrast(120%)");
     if (state.imgMosaic) filters.push("blur(2px)");
-    bgOverlayHtml += `<div style="position:absolute;inset:0;background:url('${state.bgImageDataUri}') center/cover no-repeat;filter:${filters.join(" ")};${state.imgMosaic ? "image-rendering:pixelated;transform:scale(1.02);" : ""}"></div>`;
+    const imgSize = state.bgScale === 100 ? "cover" : `${state.bgScale}% auto`;
+    bgLayerHtml += `<div style="position:absolute;inset:0;background:url('${state.bgImageDataUri}') center/${imgSize} no-repeat;filter:${filters.join(" ")};${state.imgMosaic ? "image-rendering:pixelated;" : ""}"></div>`;
     if (state.imgRainbow) {
-      bgOverlayHtml += `<div style="position:absolute;inset:0;background:linear-gradient(45deg,rgba(255,0,0,0.45),rgba(255,255,0,0.45),rgba(0,255,0,0.45),rgba(0,255,255,0.45),rgba(255,0,255,0.45));mix-blend-mode:overlay;"></div>`;
+      bgLayerHtml += `<div style="position:absolute;inset:0;background:linear-gradient(45deg,rgba(255,0,0,0.45),rgba(255,255,0,0.45),rgba(0,255,0,0.45),rgba(0,255,255,0.45),rgba(255,0,255,0.45));mix-blend-mode:overlay;"></div>`;
     }
   }
 
-  // 透過GIFモード時のドロップシャドウ無効化オプション
   const disableDropShadow = options.noBlurShadow === true;
 
-  // 枠線
+  // 枠線（背景速度に連動して点滅）
   let borderStyle = "";
   if (state.borderStyle === "ridge") borderStyle = "border: 10px ridge #ffd700;";
   else if (state.borderStyle === "groove") borderStyle = "border: 10px groove #00ffff;";
-  else if (state.borderStyle === "rainbow") borderStyle = `border: 10px solid hsl(${(hueDeg + Math.round(rawProgress * 360)) % 360}, 100%, 50%);`;
+  else if (state.borderStyle === "rainbow") borderStyle = `border: 10px solid hsl(${Math.round(bgProgress * 360)}, 100%, 50%);`;
 
   // キャンバスサイズ
-  let sizeStyle = "padding: 28px 40px; display: inline-flex; align-items: center; justify-content: center;";
+  let sizeStyle = "padding: 28px 40px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden;";
   if (state.canvasSize !== "auto") {
     const [w, h] = state.canvasSize.split("x");
     sizeStyle = `width: ${w}px; height: ${h}px; display: flex; align-items: center; justify-content: center; overflow: hidden;`;
   }
 
   const grad = buildGradientCSS(state);
-  const bgPos = state.rainbowAnim === "flow" ? `${rawProgress * 200}% 50%` : "50% 50%";
+  const bgPos = state.rainbowAnim === "flow" ? `${colorProgress * 200}% 50%` : "50% 50%";
 
   let innerContent = "";
   if (state.warpMode === "none") {
-    innerContent = buildHtmlWordArt(state, transformStr, hueDeg, grad, bgPos, rawProgress, disableDropShadow);
+    innerContent = buildHtmlWordArt(state, transformStr, hueDeg, grad, bgPos, colorProgress, disableDropShadow);
   } else {
-    innerContent = buildSvgWordArt(state, transformStr, hueDeg, rawProgress, options.embeddedFontCss || "", disableDropShadow);
+    innerContent = buildSvgWordArt(state, transformStr, hueDeg, colorProgress, options.embeddedFontCss || "", disableDropShadow);
   }
 
   mount.innerHTML = `
     <div id="wordart-canvas-box" style="position:relative; ${sizeStyle} ${bgStyle} ${borderStyle} box-sizing:border-box;">
-      ${bgOverlayHtml}
+      ${bgLayerHtml}
       <div style="position:relative; z-index:2;">${innerContent}</div>
     </div>
   `;
 }
 
-function buildHtmlWordArt(s, transformStr, hueDeg, grad, bgPos, rawProgress, disableDropShadow) {
-  // 3D押し出し影（最大25層）
+function buildHtmlWordArt(s, transformStr, hueDeg, grad, bgPos, colorProgress, disableDropShadow) {
   const layers = Math.min(25, s.extrude);
   const shadows = [];
   for (let i = 1; i <= layers; i++) {
@@ -281,7 +330,6 @@ function buildHtmlWordArt(s, transformStr, hueDeg, grad, bgPos, rawProgress, dis
   }
   const textShadowCSS = shadows.length ? `text-shadow: ${shadows.join(", ")};` : "";
 
-  // 文字コンテンツ（1文字ずつ位相差ウェーブ虹対応）
   const renderTextHtml = (isFront) => {
     if (s.rainbowAnim !== "charWave" || !isFront) {
       return escapeHtml(s.text).replace(/\n/g, "<br>");
@@ -289,13 +337,12 @@ function buildHtmlWordArt(s, transformStr, hueDeg, grad, bgPos, rawProgress, dis
     let idx = 0;
     return s.text.split("").map(ch => {
       if (ch === "\n") return "<br>";
-      const charHue = Math.round(((idx * 35) + rawProgress * 360) % 360);
+      const charHue = Math.round(((idx * 35) + colorProgress * 360) % 360);
       idx++;
       return `<span style="color: hsl(${charHue}, 100%, 55%);">${escapeHtml(ch)}</span>`;
     }).join("");
   };
 
-  // 輪郭レイヤー（多重縁取り対応）
   const strokeWidth = s.stroke * 2;
   const outerTriple = s.tripleStroke && s.stroke > 0
     ? `-webkit-text-stroke: ${strokeWidth + 8}px #ffffff; paint-order: stroke fill;`
@@ -335,7 +382,7 @@ function buildHtmlWordArt(s, transformStr, hueDeg, grad, bgPos, rawProgress, dis
   `;
 }
 
-function buildSvgWordArt(s, transformStr, hueDeg, rawProgress, embeddedFontCss, disableDropShadow) {
+function buildSvgWordArt(s, transformStr, hueDeg, colorProgress, embeddedFontCss, disableDropShadow) {
   const lines = s.text.split("\n");
   const lineHeight = s.size * s.lineHeight;
   const maxChars = Math.max(1, ...lines.map(l => l.length));
@@ -364,7 +411,6 @@ function buildSvgWordArt(s, transformStr, hueDeg, rawProgress, embeddedFontCss, 
 
     pathsHtml += `<path id="${pathId}" d="${d}" fill="none" />`;
 
-    // SVG用 3D押し出し多重 <use> レイヤー
     for (let l = layers; l >= 1; l--) {
       const c = s.rainbowExtrude ? `hsl(${(l * 24 + hueDeg) % 360}, 100%, 45%)` : s.extrudeColor;
       extrudeUsesHtml += `<use href="#${textGroupId}" x="${l}" y="${l}" fill="${c}" stroke="${c}" stroke-width="${s.stroke}" />`;
@@ -386,7 +432,7 @@ function buildSvgWordArt(s, transformStr, hueDeg, rawProgress, embeddedFontCss, 
     ? `drop-shadow(${s.shadowDist}px ${s.shadowDist}px ${s.shadowBlur}px ${s.shadowColor})`
     : "";
 
-  const shiftX = s.rainbowAnim === "flow" ? `${rawProgress * 100}%` : "0%";
+  const shiftX = s.rainbowAnim === "flow" ? `${colorProgress * 100}%` : "0%";
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"
@@ -426,7 +472,7 @@ function generateExportCode() {
   const needJs = state.rainbowAnim === "charWave";
   const jsSnippet = needJs ? `\n<script>
   document.querySelectorAll('.${cls}-char').forEach((el, i) => {
-    el.style.animation = 'kuso-hue-${suffix} ${state.speed}s linear infinite';
+    el.style.animation = 'kuso-hue-${suffix} ${state.rainbowSpeed}s linear infinite';
     el.style.animationDelay = (-i * 0.1) + 's';
   });
 <\/script>` : "";
@@ -456,7 +502,7 @@ function generateExportCode() {
     ${needJs ? "color: #ff0055;" : `background-image: ${grad}; -webkit-background-clip: text; background-clip: text; color: transparent;`}
     -webkit-text-stroke: ${state.stroke}px ${state.strokeColor};
     paint-order: stroke fill;
-    ${state.rainbowAnim === "hue" ? `animation: kuso-hue-${suffix} ${state.speed}s linear infinite;` : ""}
+    ${state.rainbowAnim === "hue" ? `animation: kuso-hue-${suffix} ${state.rainbowSpeed}s linear infinite;` : ""}
   }
 </style>
 <div class="${cls}-wrap">
@@ -484,7 +530,7 @@ async function getEmbeddedFontCss(fontName, text) {
     }
     const font = opentype.parse(buffer);
     const uniqueChars = Array.from(new Set(text.replace(/\s/g, "")));
-    const glyphs = [font.glyphs.get(0)]; // .notdef
+    const glyphs = [font.glyphs.get(0)];
     uniqueChars.forEach(ch => {
       const g = font.charToGlyph(ch);
       if (g && g.index !== 0) glyphs.push(g);
@@ -510,17 +556,22 @@ async function getEmbeddedFontCss(fontName, text) {
 }
 
 // ==========================================
-// 8. 静止画（PNG/JPEG）・GIF・MP4書き出しエンジン
+// 8. 静止画（PNG/JPEG）・GIF・MP4書き出しエンジン（3つの独立周期の最小公倍数対応）
 // ==========================================
 function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
 function lcm(a, b) { return (a * b) / gcd(a, b); }
 
 function getLoopDurationMs() {
   if (state.gifDuration !== "auto") return Number(state.gifDuration) * 1000;
-  const hasAnim = state.rainbowAnim !== "none" || state.motionAnim !== "none" || state.subMotion !== "none" || state.bgMode === "sunburst" || state.bgMode === "rainbowStripe" || state.borderStyle === "rainbow";
-  if (!hasAnim) return 1000;
-  const p1 = Math.round(Math.max(300, state.speed * 1000));
-  return Math.min(5000, p1);
+  const periods = [];
+  if (state.rainbowAnim !== "none") periods.push(Math.round(Math.max(300, state.rainbowSpeed * 1000)));
+  if (state.motionAnim !== "none" || state.subMotion !== "none") periods.push(Math.round(Math.max(300, state.motionSpeed * 1000)));
+  if (state.bgMode === "sunburst" || state.bgMode === "rainbowStripe" || state.bgMode === "space" || state.bgMode === "sky" || state.bgMode === "dots" || state.borderStyle === "rainbow") {
+    periods.push(Math.round(Math.max(300, state.bgSpeed * 1000)));
+  }
+  if (periods.length === 0) return 1000;
+  const combined = periods.reduce((acc, cur) => lcm(acc, cur), periods[0]);
+  return Math.min(5000, combined);
 }
 
 async function captureFrameCanvas(tMs, embeddedFontCss, noBlurShadow = false, maxDim = 1280) {
@@ -567,7 +618,6 @@ function triggerDownloadOrModal(blobUrl, filename, label) {
   a.click();
   a.remove();
 
-  // インアプリブラウザ（X/LINE等）対策：長押し保存用モーダルも表示
   openModal(label, `
     <p style="font-size:0.85rem; margin-top:0;">自動ダウンロードが始まらない場合や、SNSアプリ内ブラウザの場合は下の画像を<strong>長押しして保存</strong>してください。</p>
     <div style="text-align:center; background:#111; padding:10px; border-radius:8px;">
@@ -610,12 +660,11 @@ async function exportStaticImage(format) {
   }
 }
 
-// インラインBlob Web Worker による GIF エンコード
 function createGifWorker() {
   const workerCode = `
     import { GIFEncoder, quantize, applyPalette } from "https://esm.sh/gifenc@1.0.3";
     self.onmessage = (e) => {
-      const { frames, width, height, delay, dither, transparent } = e.data;
+      const { frames, width, height, delay, transparent } = e.data;
       const gif = GIFEncoder();
       frames.forEach((rgba, idx) => {
         const data = new Uint8ClampedArray(rgba);
@@ -652,11 +701,8 @@ async function exportGifAnimation() {
       "・OK：透過GIFモード（ぼかし影を自動オフにし1bit透過で出力）\n" +
       "・キャンセル：白背景に自動フォールバックして滑らかな影を維持"
     );
-    if (choice) {
-      transparentMode = true;
-    } else {
-      fallbackBgColor = "#ffffff";
-    }
+    if (choice) transparentMode = true;
+    else fallbackBgColor = "#ffffff";
   }
 
   showProgress("🎞️ コマ送りフレームを撮影中...");
@@ -697,7 +743,6 @@ async function exportGifAnimation() {
       width,
       height,
       delay: delayMs,
-      dither: state.gifDither,
       transparent: transparentMode
     }, frameBuffers);
 
@@ -733,7 +778,6 @@ async function exportMp4Video() {
   try {
     const fontCss = state.warpMode !== "none" ? await getEmbeddedFontCss(state.font, state.text) : "";
     const firstCanvas = await captureFrameCanvas(0, fontCss, false, 640);
-    // H.264は偶数解像度が必須
     const width = firstCanvas.width % 2 === 0 ? firstCanvas.width : firstCanvas.width - 1;
     const height = firstCanvas.height % 2 === 0 ? firstCanvas.height : firstCanvas.height - 1;
 
@@ -806,7 +850,7 @@ function autoFitFontSize() {
     const maxLen = Math.max(1, ...lines.map(l => l.length));
     const fitW = Math.floor((cw * 0.85) / maxLen);
     const fitH = Math.floor((ch * 0.75) / (lines.length * state.lineHeight));
-    state.size = Math.max(16, Math.min(180, Math.min(fitW, fitH)));
+    state.size = Math.max(16, Math.min(240, Math.min(fitW, fitH)));
     state.offsetX = 0;
     state.offsetY = 0;
   }
@@ -835,8 +879,6 @@ function syncUIFromState() {
   setVal("ctrl-text", state.text);
   setTxt("char-count", state.text.length);
   setVal("ctrl-canvas-size", state.canvasSize);
-  setVal("ctrl-zoom", state.zoom);
-  document.getElementById("zoom-wrapper").style.transform = `scale(${state.zoom})`;
 
   setVal("ctrl-line-height", state.lineHeight); setTxt("val-line-height", state.lineHeight);
   setVal("ctrl-size", state.size); setTxt("val-size", state.size);
@@ -868,19 +910,21 @@ function syncUIFromState() {
   setVal("ctrl-scale-x", state.scaleX); setTxt("val-scale-x", state.scaleX);
   setVal("ctrl-perspective", state.perspective); setTxt("val-perspective", state.perspective);
 
-  // 排他仕様：SVGモード時は遠近台形無効化
   const wrapPersp = document.getElementById("wrap-perspective");
   const ctrlPersp = document.getElementById("ctrl-perspective");
   wrapPersp.classList.toggle("disabled-control", state.warpMode !== "none");
   ctrlPersp.disabled = state.warpMode !== "none";
 
   setVal("ctrl-rainbow-anim", state.rainbowAnim);
+  setVal("ctrl-rainbow-speed", state.rainbowSpeed); setTxt("val-rainbow-speed", state.rainbowSpeed.toFixed(1));
   setVal("ctrl-motion-anim", state.motionAnim);
   setVal("ctrl-sub-motion", state.subMotion);
-  setVal("ctrl-speed", state.speed); setTxt("val-speed", state.speed.toFixed(1));
+  setVal("ctrl-motion-speed", state.motionSpeed); setTxt("val-motion-speed", state.motionSpeed.toFixed(1));
   setVal("ctrl-easing", state.easing);
 
   setVal("ctrl-bg-mode", state.bgMode);
+  setVal("ctrl-bg-scale", state.bgScale); setTxt("val-bg-scale", state.bgScale);
+  setVal("ctrl-bg-speed", state.bgSpeed); setTxt("val-bg-speed", state.bgSpeed.toFixed(1));
   setVal("ctrl-bg-color1", state.bgColor1);
   setVal("ctrl-bg-color2", state.bgColor2);
   document.getElementById("wrap-bg-colors").hidden = !(state.bgMode === "solid" || state.bgMode === "grad2");
@@ -894,7 +938,65 @@ function syncUIFromState() {
 }
 
 // ==========================================
-// 10. 初期化
+// 10. プレビュービューポート操作（拡大縮小・ドラッグパン）初期化
+// ==========================================
+function initViewportInteractions() {
+  const stage = document.getElementById("preview-stage");
+
+  const setZoom = (newZoom) => {
+    viewport.zoom = Math.max(0.25, Math.min(3.0, Number(newZoom.toFixed(2))));
+    updateViewportTransform();
+  };
+
+  document.getElementById("btn-zoom-in").addEventListener("click", () => setZoom(viewport.zoom + 0.15));
+  document.getElementById("btn-zoom-out").addEventListener("click", () => setZoom(viewport.zoom - 0.15));
+  document.getElementById("btn-view-reset").addEventListener("click", () => {
+    viewport.zoom = 1.0;
+    viewport.panX = 0;
+    viewport.panY = 0;
+    updateViewportTransform();
+  });
+
+  // マウスホイールで拡大縮小
+  stage.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    setZoom(viewport.zoom + delta);
+  }, { passive: false });
+
+  // ドラッグ移動（マウス・タッチ対応）
+  const onPointerDown = (clientX, clientY) => {
+    viewport.isDragging = true;
+    viewport.dragStartX = clientX - viewport.panX;
+    viewport.dragStartY = clientY - viewport.panY;
+  };
+  const onPointerMove = (clientX, clientY) => {
+    if (!viewport.isDragging) return;
+    viewport.panX = clientX - viewport.dragStartX;
+    viewport.panY = clientY - viewport.dragStartY;
+    updateViewportTransform();
+  };
+  const onPointerUp = () => { viewport.isDragging = false; };
+
+  stage.addEventListener("mousedown", e => onPointerDown(e.clientX, e.clientY));
+  window.addEventListener("mousemove", e => onPointerMove(e.clientX, e.clientY));
+  window.addEventListener("mouseup", onPointerUp);
+
+  stage.addEventListener("touchstart", e => {
+    if (e.touches.length === 1) onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  stage.addEventListener("touchmove", e => {
+    if (e.touches.length === 1 && viewport.isDragging) {
+      onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
+  stage.addEventListener("touchend", onPointerUp);
+
+  updateViewportTransform();
+}
+
+// ==========================================
+// 11. メイン初期化
 // ==========================================
 function init() {
   if (typeof VideoEncoder === "undefined") {
@@ -902,7 +1004,6 @@ function init() {
     if (mp4Btn) mp4Btn.style.display = "none";
   }
 
-  // URLハッシュ復元
   if (location.hash.startsWith("#config=")) {
     try {
       const decoded = JSON.parse(decodeURIComponent(atob(location.hash.slice(8))));
@@ -923,7 +1024,6 @@ function init() {
 
   bind("ctrl-text", "text");
   bind("ctrl-canvas-size", "canvasSize");
-  bind("ctrl-zoom", "zoom", "num");
   bind("ctrl-jpeg-quality", "jpegQuality", "num");
   bind("ctrl-gif-duration", "gifDuration");
   bind("ctrl-gif-dither", "gifDither", "bool");
@@ -953,11 +1053,14 @@ function init() {
   bind("ctrl-scale-x", "scaleX", "num");
   bind("ctrl-perspective", "perspective", "num");
   bind("ctrl-rainbow-anim", "rainbowAnim");
+  bind("ctrl-rainbow-speed", "rainbowSpeed", "num");
   bind("ctrl-motion-anim", "motionAnim");
   bind("ctrl-sub-motion", "subMotion");
-  bind("ctrl-speed", "speed", "num");
+  bind("ctrl-motion-speed", "motionSpeed", "num");
   bind("ctrl-easing", "easing");
   bind("ctrl-bg-mode", "bgMode");
+  bind("ctrl-bg-scale", "bgScale", "num");
+  bind("ctrl-bg-speed", "bgSpeed", "num");
   bind("ctrl-bg-color1", "bgColor1");
   bind("ctrl-bg-color2", "bgColor2");
   bind("ctrl-img-saturate", "imgSaturate", "bool");
@@ -981,7 +1084,7 @@ function init() {
     });
   });
 
-  // 画像アップロード（長辺1280pxキャップ）
+  // 画像アップロード
   document.getElementById("btn-trigger-upload").addEventListener("click", () => document.getElementById("ctrl-bg-file").click());
   document.getElementById("ctrl-bg-file").addEventListener("change", e => {
     const file = e.target.files[0];
@@ -1005,7 +1108,6 @@ function init() {
     img.src = URL.createObjectURL(file);
   });
 
-  // プリセット・ランダム・Undo・リセット・AutoFit・共有
   document.getElementById("ctrl-preset").addEventListener("change", e => {
     pushUndo();
     state = { ...state, ...PRESETS[e.target.value] };
@@ -1030,10 +1132,13 @@ function init() {
       warpMode: pick(["none", "arch", "wave"]),
       warpAmount: Math.floor(Math.random() * 120) - 60,
       rainbowAnim: pick(["none", "hue", "flow", "charWave"]),
+      rainbowSpeed: Number((Math.random() * 2.5 + 0.4).toFixed(1)),
       motionAnim: pick(["none", "rotate2d", "rotateY", "pulse"]),
       subMotion: pick(["none", "bounce", "shake"]),
-      speed: Number((Math.random() * 2.5 + 0.4).toFixed(1)),
+      motionSpeed: Number((Math.random() * 3.0 + 0.6).toFixed(1)),
       bgMode: pick(["transparent", "sunburst", "rainbowStripe", "space", "sky", "dots"]),
+      bgScale: Math.floor(Math.random() * 150) + 50,
+      bgSpeed: Number((Math.random() * 4.0 + 0.8).toFixed(1)),
       borderStyle: pick(["none", "ridge", "groove", "rainbow"])
     };
     syncUIFromState();
@@ -1066,7 +1171,6 @@ function init() {
       : "📋 このダサ設定のURLをコピーしました！");
   });
 
-  // 書き出しボタン群
   document.getElementById("btn-export-png").addEventListener("click", () => exportStaticImage("png"));
   document.getElementById("btn-export-jpeg").addEventListener("click", () => exportStaticImage("jpeg"));
   document.getElementById("btn-export-gif").addEventListener("click", exportGifAnimation);
@@ -1076,7 +1180,6 @@ function init() {
     showToast("📋 HTML/CSSコードをコピーしました！");
   });
 
-  // スマホ用ボトムシートモーダル
   document.getElementById("btn-mobile-save").addEventListener("click", () => {
     openModal("💾 画像・GIF・動画の保存", `
       <div style="display:flex; flex-direction:column; gap:10px;">
@@ -1114,6 +1217,7 @@ function init() {
     e.target.textContent = isPlaying ? "⏸️ 一時停止" : "▶️ 再生";
   });
 
+  initViewportInteractions();
   syncUIFromState();
 
   function tick(now) {

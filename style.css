@@ -55,7 +55,7 @@ body {
 
 .btn:hover:not(:disabled) { background: #52525b; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-sm { padding: 4px 8px; font-size: 0.8rem; }
+.btn-sm { padding: 4px 8px; font-size: 0.78rem; }
 .btn-primary { background: #2563eb; border-color: #3b82f6; }
 .btn-rainbow {
   background: linear-gradient(45deg, #ff0055, #ffcc00, #00cc66, #0099ff);
@@ -63,13 +63,13 @@ body {
   text-shadow: 1px 1px 2px #000;
 }
 
-/* PC 2カラムレイアウト：横幅を厳密に固定してガタつきを防止 */
+/* PC 2カラムレイアウト：横幅を厳密固定 */
 .app-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px; /* minmax(0, 1fr) で中身による押し広げを完全ブロック */
+  grid-template-columns: minmax(0, 1fr) 440px;
   gap: 20px;
   padding: 20px;
-  max-width: 1440px;
+  max-width: 1480px;
   margin: 0 auto;
   width: 100%;
 }
@@ -84,7 +84,7 @@ body {
 
 .preview-toolbar {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   background: var(--panel-bg);
   padding: 10px;
@@ -92,24 +92,46 @@ body {
   flex-wrap: wrap;
 }
 
+.viewport-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  background: #18181b;
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.zoom-badge {
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #fde047;
+  min-width: 46px;
+  text-align: center;
+}
+
 .inline-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
 }
 
-/* プレビューキャンバス：高さを固定し、アニメーションで枠が伸び縮みしないようにする */
+/* プレビューキャンバス：ドラッグ移動＆ズーム対応ビューポート */
 .preview-stage {
-  height: 420px;        /* min-height ではなく height で高さを完全固定 */
+  height: 440px;
   width: 100%;
   border: 2px solid var(--border-color);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;     /* 回転や震えアニメーションのはみ出しによるスクロールバー明滅を防止 */
+  overflow: hidden;
   position: relative;
+  cursor: grab;
+  user-select: none;
   background-color: #ffffff;
   background-image:
     linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
@@ -118,6 +140,29 @@ body {
     linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+.preview-stage:active {
+  cursor: grabbing;
+}
+
+/* プレビュー右上の倍率常時表示HUD */
+.stage-hud {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(9, 9, 11, 0.82);
+  color: #f4f4f5;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  z-index: 20;
+  pointer-events: none;
+  border: 1px solid #52525b;
+}
+.stage-hud strong {
+  color: #fde047;
+  font-family: monospace;
 }
 
 .controls-section {
@@ -131,26 +176,28 @@ body {
 
 .tab-bar {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   flex-wrap: wrap;
-  background: var(--panel-bg);
+  background: #09090b;
   padding: 6px;
   border-radius: 8px;
   position: sticky;
   top: 0;
   z-index: 10;
+  border: 1px solid var(--border-color);
 }
 
 .tab-btn {
-  flex: 1;
+  flex: 1 1 auto;
   background: transparent;
   color: var(--text-muted);
   border: none;
-  padding: 6px 4px;
+  padding: 6px 6px;
   border-radius: 4px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: bold;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .tab-btn.active {
@@ -170,16 +217,32 @@ body {
 
 .control-group h2 {
   margin: 0 0 4px 0;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: #fde047;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 6px;
 }
 
+.sub-card {
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sub-card-title {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #38bdf8;
+}
+
 .control-group label {
   display: flex;
   flex-direction: column;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   gap: 4px;
 }
 
@@ -211,7 +274,7 @@ input[type="color"] {
 }
 
 .char-counter, .notice-text {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   color: var(--text-muted);
   margin: 0;
 }
@@ -237,7 +300,6 @@ input[type="color"] {
   align-items: center;
 }
 
-/* モーダル＆プログレスバー */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -310,7 +372,10 @@ input[type="color"] {
 .mobile-only { display: none; }
 
 @media (max-width: 767px) {
-  .app-layout { grid-template-columns: 1fr; padding: 0; }
+  .app-layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0;
+  }
   .preview-section {
     position: sticky;
     top: 0;
@@ -319,7 +384,11 @@ input[type="color"] {
     padding: 8px;
     border-bottom: 2px solid var(--border-color);
   }
-  .preview-stage { min-height: 34vh; max-height: 40vh; }
+  .preview-stage {
+    height: 36vh;
+    min-height: 240px;
+    max-height: 36vh;
+  }
   .controls-section { max-height: none; padding: 12px; }
   .desktop-only { display: none; }
   .mobile-only { display: flex; }
@@ -335,16 +404,4 @@ input[type="color"] {
     border-top: 1px solid var(--border-color);
   }
   .mobile-action-bar .btn { flex: 1; padding: 10px; }
-}
-/* スマホ対応（767px以下）も高さを固定してガタつき防止 */
-@media (max-width: 767px) {
-  .app-layout {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 0;
-  }
-  .preview-stage {
-    height: 36vh;
-    min-height: 240px;
-    max-height: 36vh;
-  }
 }
