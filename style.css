@@ -63,13 +63,15 @@ body {
   text-shadow: 1px 1px 2px #000;
 }
 
+/* PC 2カラムレイアウト：横幅を厳密に固定してガタつきを防止 */
 .app-layout {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: minmax(0, 1fr) 420px; /* minmax(0, 1fr) で中身による押し広げを完全ブロック */
   gap: 20px;
   padding: 20px;
   max-width: 1440px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .preview-section {
@@ -77,6 +79,7 @@ body {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  width: 100%;
 }
 
 .preview-toolbar {
@@ -96,14 +99,16 @@ body {
   font-size: 0.85rem;
 }
 
+/* プレビューキャンバス：高さを固定し、アニメーションで枠が伸び縮みしないようにする */
 .preview-stage {
-  min-height: 380px;
+  height: 420px;        /* min-height ではなく height で高さを完全固定 */
+  width: 100%;
   border: 2px solid var(--border-color);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: auto;
+  overflow: hidden;     /* 回転や震えアニメーションのはみ出しによるスクロールバー明滅を防止 */
   position: relative;
   background-color: #ffffff;
   background-image:
@@ -330,4 +335,16 @@ input[type="color"] {
     border-top: 1px solid var(--border-color);
   }
   .mobile-action-bar .btn { flex: 1; padding: 10px; }
+}
+/* スマホ対応（767px以下）も高さを固定してガタつき防止 */
+@media (max-width: 767px) {
+  .app-layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0;
+  }
+  .preview-stage {
+    height: 36vh;
+    min-height: 240px;
+    max-height: 36vh;
+  }
 }
