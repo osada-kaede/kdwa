@@ -16,8 +16,8 @@
   <header class="app-header">
     <h1>🌈 クソダサ・レインボーワードアートジェネレーター</h1>
     <div class="header-actions">
-      <button id="btn-random" class="btn btn-rainbow" title="全パラメーターをランダム生成">🎲 おまかせダサ生成</button>
-      <button id="btn-undo" class="btn" disabled>↩️ Undo (<span id="undo-count">0</span>)</button>
+      <button id="btn-random" class="btn btn-rainbow" title="ロックされていないパラメーターをランダム生成">🎲 おまかせダサ生成</button>
+      <button id="btn-undo" class="btn" disabled title="Ctrl+Z / Cmd+Z">↩️ Undo (<span id="undo-count">0</span>)</button>
       <button id="btn-reset" class="btn">🔄 リセット</button>
       <button id="btn-share" class="btn">🔗 URL共有</button>
     </div>
@@ -34,10 +34,16 @@
             <option value="1200x675">Xヘッダー (16:9 / 1200×675)</option>
             <option value="468x60">平成フルバナー (468×60)</option>
             <option value="88x31">平成ミニバナー (88×31)</option>
+            <option value="custom">カスタム数値指定...</option>
           </select>
         </label>
+        <div id="wrap-custom-size" class="custom-size-inputs" hidden>
+          <input type="number" id="ctrl-custom-w" min="32" max="2400" value="600" title="幅(px)" />
+          <span>×</span>
+          <input type="number" id="ctrl-custom-h" min="32" max="2400" value="300" title="高さ(px)" />
+        </div>
         <button id="btn-autofit" class="btn btn-sm" title="文字サイズを枠内に自動調整">🔍 文字を枠にフィット</button>
-        <button id="btn-play-pause" class="btn btn-sm">⏸️ 一時停止</button>
+        <button id="btn-play-pause" class="btn btn-sm" title="Spaceキーで切替">⏸️ 一時停止</button>
 
         <!-- プレビュー表示倍率・パン操作コントロール -->
         <div class="viewport-controls">
@@ -51,7 +57,7 @@
       <div class="preview-stage" id="preview-stage" title="ドラッグで移動 / ホイールで拡大縮小">
         <div class="stage-hud">
           <span>表示倍率: <strong id="hud-zoom-text">100%</strong></span>
-          <span>（ドラッグで移動 / ホイールでズーム）</span>
+          <span>（ドラッグ移動 / ホイールズーム / Space再生停止）</span>
         </div>
         <div id="viewport-transform" style="transform-origin: center center; will-change: transform;">
           <div id="wordart-mount"></div>
@@ -82,6 +88,7 @@
           <button id="btn-export-jpeg" class="btn btn-primary">📷 JPEG保存</button>
           <button id="btn-export-gif" class="btn btn-rainbow">🎞️ GIFアニメ保存</button>
           <button id="btn-export-mp4" class="btn btn-primary">🎬 MP4動画保存</button>
+          <button id="btn-web-share" class="btn" hidden>📤 画像をSNS共有</button>
           <button id="btn-copy-code" class="btn">📋 HTML/CSSコピー</button>
         </div>
         <div id="code-image-notice" class="notice-text" hidden>※アップロード画像はコード肥大化防止のためプレースホルダー（/* ここに画像のURLを指定してください */）で出力されます。</div>
@@ -95,27 +102,48 @@
         <button class="tab-btn active" data-tab="all">すべて</button>
         <button class="tab-btn" data-tab="text">①文字</button>
         <button class="tab-btn" data-tab="font">②書体・立体</button>
-        <button class="tab-btn" data-tab="color">③虹・色</button>
+        <button class="tab-btn" data-tab="color">③虹・質感</button>
         <button class="tab-btn" data-tab="shape">④形・変形</button>
-        <button class="tab-btn" data-tab="motion">⑤文字の動き</button>
+        <button class="tab-btn" data-tab="motion">⑤動き</button>
         <button class="tab-btn" data-tab="bg">⑥背景・枠</button>
       </div>
 
       <!-- ① テキスト＆配置（純粋な文字内容と座標のみ） -->
       <div class="control-group" data-group="text">
-        <h2>① テキスト・配置（内容と位置）</h2>
+        <div class="group-header">
+          <h2>① テキスト・配置（内容と位置）</h2>
+          <button type="button" class="btn-lock" data-lock="text" title="おまかせ生成時にこの項目を保護">🔓</button>
+        </div>
+
+        <div class="text-tools-row">
+          <button type="button" id="btn-meme-gacha" class="btn btn-sm btn-rainbow">🎰 平成定型文ガチャ</button>
+          <label class="checkbox-label">
+            <input type="checkbox" id="ctrl-vertical" /> 縦書きモード（直線描画時）
+          </label>
+        </div>
+
         <textarea id="ctrl-text" maxlength="100" rows="2" placeholder="最大100文字まで入力可能">祝！キリ番10000HIT達成！！</textarea>
         <div class="char-counter"><span id="char-count">15</span> / 100文字</div>
 
-        <label>ワンクリック・トータルプリセット（入力文字は維持）:
-          <select id="ctrl-preset">
-            <option value="excel97">1. 王道・Excel97虹色アーチ</option>
-            <option value="gaming">2. ゲーミング極彩色フラッシュ</option>
-            <option value="kiriban">3. 平成のキリ番報告バナー</option>
-            <option value="pachinko">4. 昭和のパチンコ屋風・金×虹立体</option>
-            <option value="void3d">5. 虚無の3D回転レインボー</option>
-          </select>
-        </label>
+        <div class="sub-card">
+          <div class="sub-card-title">💾 プリセット ＆ マイプリセット保存</div>
+          <label>公式トータルプリセット（文字は維持）:
+            <select id="ctrl-preset">
+              <option value="excel97">1. 王道・Excel97虹色アーチ</option>
+              <option value="gaming">2. ゲーミング極彩色フラッシュ</option>
+              <option value="kiriban">3. 平成のキリ番報告バナー</option>
+              <option value="pachinko">4. 昭和のパチンコ屋風・金×虹立体</option>
+              <option value="void3d">5. 虚無の3D回転レインボー</option>
+            </select>
+          </label>
+          <div class="my-preset-row">
+            <select id="ctrl-my-presets">
+              <option value="">-- マイプリセットを選択 --</option>
+            </select>
+            <button type="button" id="btn-save-preset" class="btn btn-sm btn-primary">＋保存</button>
+            <button type="button" id="btn-del-preset" class="btn btn-sm">削除</button>
+          </div>
+        </div>
 
         <div class="grid-2">
           <label>文字の横位置 (X): <span id="val-offset-x">0</span>px
@@ -132,7 +160,10 @@
 
       <!-- ② フォント・輪郭・立体感（書体と厚みのみ） -->
       <div class="control-group" data-group="font">
-        <h2>② 書体・輪郭・3D立体（フォントと厚み）</h2>
+        <div class="group-header">
+          <h2>② 書体・輪郭・3D立体（フォントと厚み）</h2>
+          <button type="button" class="btn-lock" data-lock="font" title="おまかせ生成時にこの項目を保護">🔓</button>
+        </div>
         <div class="grid-2">
           <label>Webフォント:
             <select id="ctrl-font">
@@ -182,16 +213,26 @@
         </div>
       </div>
 
-      <!-- ③ 虹・カラー（文字の配色のみ） -->
+      <!-- ③ 虹・カラー・質感（文字の配色のみ） -->
       <div class="control-group" data-group="color">
-        <h2>③ 虹・カラー（文字の配色ルール）</h2>
-        <label>文字カラーモード:
+        <div class="group-header">
+          <h2>③ 虹・カラー・質感テクスチャ</h2>
+          <button type="button" class="btn-lock" data-lock="color" title="おまかせ生成時にこの項目を保護">🔓</button>
+        </div>
+        <label>文字カラー / 質感モード:
           <select id="ctrl-rainbow-mode">
             <option value="vivid">極彩色レインボー（原色7色）</option>
             <option value="pastel">パステル虹</option>
             <option value="cyber">サイバーネオン虹</option>
             <option value="metallic">メタリック虹（金・銀・虹）</option>
             <option value="solid">単色（脱・虹モード）</option>
+            <optgroup label="WordArt風 質感テクスチャ">
+              <option value="tex_water">質感：水滴ブルー</option>
+              <option value="tex_marble">質感：大理石グリーン</option>
+              <option value="tex_denim">質感：デニム生地</option>
+              <option value="tex_fire">質感：メラメラ炎</option>
+              <option value="tex_chrome">質感：金属クローム管</option>
+            </optgroup>
           </select>
         </label>
         <label id="wrap-solid-color" hidden>単色カラー:
@@ -218,7 +259,10 @@
 
       <!-- ④ 変形・形（文字の歪み・カーブのみ） -->
       <div class="control-group" data-group="shape">
-        <h2>④ 変形・形（アーチ・波形・遠近台形）</h2>
+        <div class="group-header">
+          <h2>④ 変形・形（アーチ・波形・遠近台形）</h2>
+          <button type="button" class="btn-lock" data-lock="shape" title="おまかせ生成時にこの項目を保護">🔓</button>
+        </div>
         <label>変形タイプ:
           <select id="ctrl-warp-mode">
             <option value="none">直線（HTML/CSS描画モード）</option>
@@ -244,7 +288,10 @@
 
       <!-- ⑤ 文字の動き（色変化速度と文字回転速度を完全分離） -->
       <div class="control-group" data-group="motion">
-        <h2>⑤ 文字の動き（色アニメ速度 &amp; 文字回転速度を個別設定）</h2>
+        <div class="group-header">
+          <h2>⑤ 文字の動き（色アニメ速度 &amp; 文字回転速度）</h2>
+          <button type="button" class="btn-lock" data-lock="motion" title="おまかせ生成時にこの項目を保護">🔓</button>
+        </div>
 
         <div class="sub-card">
           <div class="sub-card-title">🌈 文字の「色変化」アニメーション</div>
@@ -299,9 +346,12 @@
         <p class="notice-text">⚠️ 光過敏性発作への配慮のため、各周期は最短0.3秒（約3.3Hz）に制限されています。</p>
       </div>
 
-      <!-- ⑥ 背景・枠線（背景のサイズ・回転速度を文字から完全分離） -->
+      <!-- ⑥ 背景・枠線・スタンプ（背景のサイズ・回転速度を文字から完全分離） -->
       <div class="control-group" data-group="bg">
-        <h2>⑥ 背景・枠線（背景サイズ &amp; 背景回転速度を個別設定）</h2>
+        <div class="group-header">
+          <h2>⑥ 背景・枠線・平成スタンプ</h2>
+          <button type="button" class="btn-lock" data-lock="bg" title="おまかせ生成時にこの項目を保護">🔓</button>
+        </div>
         <label>背景モード:
           <select id="ctrl-bg-mode">
             <option value="transparent">透過（市松模様プレビュー）</option>
@@ -339,14 +389,25 @@
           <label class="checkbox-label"><input type="checkbox" id="ctrl-img-rainbow" /> 虹色オーバーレイ合成</label>
         </div>
 
-        <label>外周フレーム（枠線）装飾:
-          <select id="ctrl-border-style">
-            <option value="none">なし</option>
-            <option value="ridge">平成立体ベベル枠 (ridge)</option>
-            <option value="groove">平成凹みベベル枠 (groove)</option>
-            <option value="rainbow">点滅レインボーボーダー</option>
-          </select>
-        </label>
+        <div class="grid-2">
+          <label>外周フレーム（枠線）装飾:
+            <select id="ctrl-border-style">
+              <option value="none">なし</option>
+              <option value="ridge">平成立体ベベル枠 (ridge)</option>
+              <option value="groove">平成凹みベベル枠 (groove)</option>
+              <option value="rainbow">点滅レインボーボーダー</option>
+            </select>
+          </label>
+          <label>平成デコレーションスタンプ:
+            <select id="ctrl-stamp-mode">
+              <option value="none">なし</option>
+              <option value="new">点滅「NEW!」バッジ</option>
+              <option value="construction">工事中ヘルメット「🚧工事中🚧」</option>
+              <option value="kiriban">四隅キラキラ「★祝キリ番★」</option>
+              <option value="fire">燃える炎エフェクト「🔥🔥🔥」</option>
+            </select>
+          </label>
+        </div>
       </div>
     </section>
   </main>
